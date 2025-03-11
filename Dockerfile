@@ -29,7 +29,7 @@ ENV PORT=80
 WORKDIR /app
 
 # 复制构建后的 Next.js 独立服务端
-COPY --from=builder /app/.next/standalone /app
+COPY --from=builder .next/standalone /app
 COPY --from=builder /app/public /app/public
 COPY --from=builder /app/.next/static /app/.next/static
 
