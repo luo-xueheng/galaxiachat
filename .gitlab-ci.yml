@@ -15,7 +15,7 @@ build:
     - export BUILD_IMAGE_PASSWORD=$CI_REGISTRY_PASSWORD
     - deployer build
   only:
-    - main
+    - master
 
 deploy:
   stage: deploy
