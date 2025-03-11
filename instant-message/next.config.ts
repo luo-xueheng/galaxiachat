@@ -1,14 +1,11 @@
-import type { NextConfig } from "next";
-const nextConfig: NextConfig = {
-  output: "standalone", // 适用于 Docker 部署
-  reactStrictMode: true, // 启用 React 严格模式
-  swcMinify: true, // 使用 SWC 进行优化
-  images: {
-    domains: ["your-cdn.com"], // 允许的图片域名（如果有需要）
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    appDir: true,  // 启用 appDir 功能
   },
-  typescript: {
-    ignoreBuildErrors: false, // 严格检查 TypeScript
-  },
+  output: 'standalone',
+  reactStrictMode: false,
+  swcMinify: true,  // 可选，启用 swc 压缩
 };
 
-export default nextConfig;
+module.exports = nextConfig;
