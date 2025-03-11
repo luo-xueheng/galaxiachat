@@ -16,6 +16,7 @@ RUN corepack enable && \
 COPY . .
 
 # 生成 Next.js 独立服务端
+RUN rm -rf .next
 RUN pnpm build
 
 # ✅ 第 2 阶段：生产环境，仅包含运行所需的文件
