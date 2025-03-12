@@ -16,8 +16,8 @@ RUN corepack enable && \
 COPY . .
 
 # 生成 Next.js 独立服务端
-RUN rm -rf .next
 RUN pnpm build
+RUN ls -la .next
 
 # ✅ 第 2 阶段：生产环境，仅包含运行所需的文件
 FROM node:22 as runner
@@ -29,12 +29,13 @@ ENV PORT=80
 # 设置工作目录
 WORKDIR /app
 
-# 复制构建后的 Next.js 独立服务端
-COPY --from=builder .next/standalone /app
-COPY --from=builder .next/static /app/.next/static
+# 复制构建产物
+COPY --from=builder /app/.next /app/.next
 COPY --from=builder /app/public /app/public
+COPY --from=builder /app/package.json /app/package.json
+COPY --from=builder /app/node_modules /app/node_modules
 
 
 # 运行服务器
-CMD ["node", "server.js"]
+CMD ["pnpm", "start"]
 # TODO End
