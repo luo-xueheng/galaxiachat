@@ -11,7 +11,8 @@ const nextConfig = {
             source: "/api/:path*",
             // TODO Start: [Student] Change to standard backend URL
             //destination: "http://127.0.0.1:8080/:path*",
-            destination: "http://127.0.0.1:8000/:path*", // 重写到后端
+            //destination: "http://127.0.0.1:8000/:path*", // 重写到后端
+            destination:"https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/:path*",
             // TODO End
         }];
     }
