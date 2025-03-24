@@ -38,7 +38,7 @@ const Page = () => {
   const router = useRouter(); // 获取 router 实例
   const register = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/register`, {
+      const response = await fetch("/api/register/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
