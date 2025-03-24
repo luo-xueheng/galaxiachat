@@ -13,7 +13,12 @@
     "test": "jest"
   },
   "dependencies": {
-    "@reduxjs/toolkit": "^2.5.1",
+    "@ant-design/icons": "^6.0.0",
+    "@ant-design/pro-components": "^2.8.6",
+    "@reduxjs/toolkit": "^2.6.1",
+    "@vercel/postgres": "^0.10.0",
+    "antd": "^5.24.4",
+    "bcryptjs": "^3.0.2",
     "jest-sonar-reporter": "^2.0.0",
     "next": "15.1.7",
     "react": "19.0.0",
