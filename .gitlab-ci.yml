@@ -16,6 +16,7 @@ build:
     - deployer build
   only:
     - master
+    - dev
 
 deploy:
   stage: deploy
