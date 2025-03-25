@@ -38,7 +38,7 @@ const Page = () => {
   const router = useRouter();
   const login = async () => {
     try {
-      const response = await fetch("/api/login/", {
+      const response = await fetch(`${BACKEND_URL}/api/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
