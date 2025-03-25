@@ -37,5 +37,5 @@ COPY --from=builder /app/node_modules /app/node_modules
 
 
 # 运行服务器
-CMD ["pnpm", "start"]
+CMD ["node", "server.js"]
 # TODO End
