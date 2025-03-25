@@ -1,11 +1,12 @@
-import Head from "next/head";
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import store, { RootState } from "../redux/store";
 import { resetAuth } from "../redux/auth";
-import { useRouter } from "next/router";
+//import { useRouter } from "next/router";
 import { Provider, useSelector, useDispatch } from "react-redux";
+import Layout from "../layout"; // 引用更新后的 Layout 组件
 
+/*
 const Layout = ({ children }: { children: React.ReactNode }) => {
     const router = useRouter();
     const dispatch = useDispatch();
@@ -25,13 +26,27 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
     );
 };
-
+*/
+/*
 function App({ Component, pageProps }: AppProps) {
     return (
         <Provider store={store}>
             <Head>
                 <title> Conway's Life Game</title>
             </Head>
+            <Layout>
+                <Component {...pageProps} />
+            </Layout>
+        </Provider>
+    );
+}
+
+export default App;
+*/
+
+function App({ Component, pageProps }: AppProps) {
+    return (
+        <Provider store={store}>
             <Layout>
                 <Component {...pageProps} />
             </Layout>
