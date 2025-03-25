@@ -20,12 +20,10 @@ FROM docker.net9.org/library/node:22
 ENV PORT=80
 
 WORKDIR /app
-# 复制构建产物
-COPY --from=builder /app/.next /app/.next
-#COPY --from=builder /app/instant-message/public /app/public
-COPY --from=builder /app/package.json /app/package.json
-COPY --from=builder /app/node_modules /app/node_modules
 
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+#COPY --from=builder /app/public ./public
 
 CMD ["node", "server.js"]
 # TODO End
