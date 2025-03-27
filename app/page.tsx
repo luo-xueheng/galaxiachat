@@ -6,12 +6,18 @@ import { metadata } from "./metadata"; // 引入 metadata
 
 const Home = () => (
   <div className="App" style={{
-    display: 'flex',           // 启用 Flexbox 布局
-    flexDirection: 'column',   // 设置垂直排列
-    justifyContent: 'center',  // 垂直居中
-    alignItems: 'center',      // 水平居中
-    height: '50vh',            // 设置高度
-    padding: '0 20px'          // 内边距
+    display: 'flex',            // 启用 Flexbox 布局
+    flexDirection: 'column',    // 设置垂直排列
+    justifyContent: 'center',   // 垂直居中
+    alignItems: 'center',       // 水平居中
+    height: '50vh',             // 设置高度
+    padding: '0 20px',          // 内边距
+    backgroundColor: '#f5f5f5', // 背景色（浅灰色）
+    borderRadius: '10px',       // 圆角边框
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', // 添加阴影效果
+    border: '1px solid #ddd',   // 浅灰色边框
+    width: '80%',               // 使容器宽度适中
+    margin: '0 auto',           // 居中显示
   }}>
     {/* 上面部分：图标和欢迎语 */}
     <div style={{
