@@ -1,6 +1,5 @@
-"use client"; // 必须添加，因为使用了客户端钩子
+//"use client"; // 必须添加，因为使用了客户端钩子
 
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -9,7 +8,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "./redux/store";
 import { resetAuth } from "./redux/auth";
 import Head from "next/head";
-import "./globals.css";
+import { metadata } from "./metadata"; // 引入 metadata
 import Providers from "./providers";
 import ClientLayout from "./client/ClientLayout";
 
@@ -25,6 +24,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+
 export default function RootLayout({
   children,
 }: {
@@ -32,6 +32,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <head>
+          <title>{metadata.title}</title>
+          <meta name="description" content={metadata.description} />
+          <link rel="icon" href={metadata.icons.icon} />
+      </head>
       <body className="antialiased">
         <Providers>
           <ClientLayout>{children}</ClientLayout>

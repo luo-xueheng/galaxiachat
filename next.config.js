@@ -3,7 +3,7 @@ const nextConfig = {
     // TODO Start: [Student] Enable standalone build
     output: 'standalone',
     // TODO End
-    reactStrictMode: false, /* @note: To prevent duplicated call of useEffect */
+    reactStrictMode: true, /* @note: To prevent duplicated call of useEffect */
     // swcMinify: true,
 
     async rewrites() {
