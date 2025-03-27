@@ -28,7 +28,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   */
 
   return (
-    <div style={{ padding: 120 }}>
+    <div style={{ padding: 0 }}>
       {children}
     </div>
   );

@@ -10,7 +10,7 @@ const Home = () => (
     flexDirection: 'column',    // 设置垂直排列
     justifyContent: 'center',   // 垂直居中
     alignItems: 'center',       // 水平居中
-    height: '50vh',             // 设置高度
+    height: '100vh',             // 设置高度
     padding: '0 20px',          // 内边距
     backgroundColor: '#f5f5f5', // 背景色（浅灰色）
     borderRadius: '10px',       // 圆角边框
@@ -24,7 +24,9 @@ const Home = () => (
       display: 'flex', 
       alignItems: 'center',  // 垂直居中图标和文本
       flexDirection: 'column', // 垂直排列
-      textAlign: 'center'    // 使文本居中
+      textAlign: 'center',    // 使文本居中
+      height: '50vh', width: '100%',
+      marginTop: 150,
     }}>
       <img src="/images/logo_tmp.png" alt="Logo" style={{ width: 150, height: 150, marginBottom: 10 }} /> {/* 图标 */}
       <div style={{ fontSize: '48px', fontWeight: 'bold' }}>
