@@ -9,9 +9,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const dispatch = useDispatch();
   const auth = useSelector((state: RootState) => state.auth);
-
+  /*
   return (
-    <div style={{ padding: 12 }}>
+    <div style={{ padding: 120 }}>
       {children}
       {pathname !== "/login" && (
         auth.token ? (
@@ -23,6 +23,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           <button onClick={() => router.push("/login")}>Go to login</button>
         )
       )}
+    </div>
+  );
+  */
+
+  return (
+    <div style={{ padding: 120 }}>
+      {children}
     </div>
   );
 }
