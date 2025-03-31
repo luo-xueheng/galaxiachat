@@ -81,7 +81,11 @@ const Page = () => {
           backdropFilter: 'blur(4px)',
         }}
         subTitle="好用的即时通讯系统"
-        
+        submitter={{
+          searchConfig: {
+            submitText: '注册',
+          },
+        }}
         onFinish={async () => {
           await register(); // 表单提交时触发登录请求
         }}
