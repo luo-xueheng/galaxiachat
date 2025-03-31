@@ -52,13 +52,16 @@ const Page = () => {
       const data = await response.json();
       console.log(data);
       if (data.code === 0) {
-        message.success("登录成功！");
+        //message.success("登录成功！");
+        alert(LOGIN_SUCCESS_PREFIX + userName);
         // 这里可以添加登录成功后的逻辑，比如跳转页面
       } else {
-        message.error(data.message || "登录失败，请检查用户名和密码");
+        //message.error(data.message || "登录失败，请检查用户名和密码");
+        alert(FAILURE_PREFIX + (data.message || LOGIN_FAILED));
       }
     } catch (error) {
-      message.error("请求失败，请稍后重试");
+      alert(FAILURE_PREFIX + error);
+      //message.error("请求失败，请稍后重试");
     }
   };
 
