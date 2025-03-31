@@ -54,12 +54,15 @@ const Page = () => {
       const data = await response.json();
       console.log(data);
       if (data.code === 0) {
+        alert(LOGIN_SUCCESS_PREFIX + userName);
         message.success("注册成功！");
         // 这里可以添加登录成功后的逻辑，比如跳转页面
       } else {
+        alert(FAILURE_PREFIX + (data.message || LOGIN_FAILED));
         message.error(data.message || "注册失败，请检查用户名和密码");
       }
     } catch (error) {
+      alert(FAILURE_PREFIX + error);
       message.error("请求失败，请稍后重试");
     }
   };
