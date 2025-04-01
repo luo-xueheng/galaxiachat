@@ -21,6 +21,8 @@ import { useState } from 'react';
 //import { useRouter } from 'next/compat/router'; // 引入 useRouter
 import{ useRouter } from 'next/navigation'; // 使用新的 useRouter
 import { useEffect } from 'react';
+import { setName, setToken } from "../redux/auth";
+import { useDispatch } from "react-redux";
 type LoginType = 'account';
 
 const iconStyles: CSSProperties = {
@@ -36,33 +38,33 @@ const Page = () => {
   const [password, setPassword] = useState("");
   const { token } = theme.useToken();
   const router = useRouter();
+  const dispatch = useDispatch();
   const login = async () => {
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    fetch(`${BACKEND_URL}/api/login`, {
+      method: "POST",
+      body: JSON.stringify({
           userName,
           password,
-        }),
-      });
-
-      const data = await response.json();
-      console.log(data);
-      if (data.code === 0) {
-        //message.success("登录成功！");
-        alert(LOGIN_SUCCESS_PREFIX + userName);
-        // 这里可以添加登录成功后的逻辑，比如跳转页面
-      } else {
-        //message.error(data.message || "登录失败，请检查用户名和密码");
-        alert(FAILURE_PREFIX + (data.message || LOGIN_FAILED));
-      }
-    } catch (error) {
-      alert(FAILURE_PREFIX + error);
-      //message.error("请求失败，请稍后重试");
-    }
+      }),
+  })
+      .then((res) => res.json())
+      .then((res) => {
+          if (Number(res.code) === 0) {
+              // Step 4 BEGIN
+              dispatch(setToken(res.token));
+              // Step 4 END
+              dispatch(setName(userName));
+              alert(LOGIN_SUCCESS_PREFIX + userName);
+              /**
+               * @note 这里假定 login 页面不是首页面，大作业中这样写的话需要作分支判断
+               */
+              router.push("/mainpage");
+          }
+          else {
+              alert(LOGIN_FAILED);
+          }
+      })
+      .catch((err) => alert(FAILURE_PREFIX + err));
   };
 
   return (
