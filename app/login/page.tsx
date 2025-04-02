@@ -54,6 +54,9 @@ const Page = () => {
               dispatch(setToken(res.token));
               // Step 4 END
               dispatch(setName(userName));
+                // 存储 token
+              localStorage.setItem("token", res.token);
+              localStorage.setItem("userName", userName);
               alert(LOGIN_SUCCESS_PREFIX + userName);
               /**
                * @note 这里假定 login 页面不是首页面，大作业中这样写的话需要作分支判断
