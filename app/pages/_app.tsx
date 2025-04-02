@@ -1,22 +1,55 @@
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
-import store, { persistor } from "../redux/store"; // 确保 Redux Store 正确导入
-import { Provider } from "react-redux";
-import { PersistGate } from "redux-persist/integration/react";
-import Layout from "../layout"; // 确保 Layout 存在
-import Head from "next/head"; // 如果你需要 Head
+import store, { RootState } from "../redux/store";
+import { resetAuth } from "../redux/auth";
+//import { useRouter } from "next/router";
+import { Provider, useSelector, useDispatch } from "react-redux";
+import Layout from "../layout"; // 引用更新后的 Layout 组件
+
+/*
+const Layout = ({ children }: { children: React.ReactNode }) => {
+    const router = useRouter();
+    const dispatch = useDispatch();
+    const auth = useSelector((state: RootState) => state.auth);
+
+    return (
+        <div style={{ padding: 12 }}>
+            {children}
+            {router.pathname !== "/login" && (auth.token ? (
+                <>
+                    <p>Logged in as user name: {auth.name}</p>
+                    <button onClick={() => dispatch(resetAuth())}>Logout</button>
+                </>
+            ) : (
+                <button onClick={() => router.push("/login")}>Go to login</button>
+            ))}
+        </div>
+    );
+};
+*/
+/*
+function App({ Component, pageProps }: AppProps) {
+    return (
+        <Provider store={store}>
+            <Head>
+                <title> Conway's Life Game</title>
+            </Head>
+            <Layout>
+                <Component {...pageProps} />
+            </Layout>
+        </Provider>
+    );
+}
+
+export default App;
+*/
 
 function App({ Component, pageProps }: AppProps) {
     return (
         <Provider store={store}>
-            <PersistGate loading={null} persistor={persistor}>
-                <Head>
-                    <title>Galaxia Chat</title>
-                </Head>
-                <Layout>
-                    <Component {...pageProps} />
-                </Layout>
-            </PersistGate>
+            <Layout>
+                <Component {...pageProps} />
+            </Layout>
         </Provider>
     );
 }

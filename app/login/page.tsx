@@ -115,7 +115,7 @@ const Page = () => {
                 value: userName,
                 onChange: (e) => setUserName(e.target.value),
               }}
-              placeholder={'用户名: admin or user'}
+              placeholder={'用户名: '}
               rules={[
                 {
                   required: true,
@@ -138,7 +138,7 @@ const Page = () => {
                 value: password,
                 onChange: (e) => setPassword(e.target.value),
               }}
-              placeholder={'密码: ant.design'}
+              placeholder={'密码: '}
               rules={[
                 {
                   required: true,

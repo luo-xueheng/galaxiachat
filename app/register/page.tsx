@@ -19,6 +19,11 @@ import type { CSSProperties } from 'react';
 import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useDispatch } from "react-redux";
+import { setName, setToken } from "../redux/auth";
+import { useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../redux/store';
 type registerType = 'account';
 
 const iconStyles: CSSProperties = {
@@ -36,35 +41,39 @@ const Page = () => {
   const [phone, setPhone] = useState("");
   const { token } = theme.useToken();
   const router = useRouter(); // 获取 router 实例
+  const dispatch = useDispatch();
   const register = async () => {
-    try {
-      const response = await fetch("/api/register/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userName,
-          password,
-          email,
-          phone,
-        }),
-      });
-
-      const data = await response.json();
-      console.log(data);
-      if (data.code === 0) {
-        alert(LOGIN_SUCCESS_PREFIX + userName);
-        message.success("注册成功！");
-        // 这里可以添加登录成功后的逻辑，比如跳转页面
-      } else {
-        alert(FAILURE_PREFIX + (data.message || LOGIN_FAILED));
-        message.error(data.message || "注册失败，请检查用户名和密码");
-      }
-    } catch (error) {
-      alert(FAILURE_PREFIX + error);
-      message.error("请求失败，请稍后重试");
-    }
+    fetch(`${BACKEND_URL}/api/login`, {
+          method: "POST",
+          body: JSON.stringify({
+              userName,
+              password,
+              email,
+              phone,
+          }),
+      })
+          .then((res) => res.json())
+          .then((res) => {
+              if (Number(res.code) === 0) {
+                  dispatch(setToken(res.token));
+                  dispatch(setName(userName));
+                    // 存储 token
+                  localStorage.setItem("token", res.token);
+                  localStorage.setItem("userName", userName);
+                  localStorage.setItem("password", password);
+                  localStorage.setItem("email", email);
+                  localStorage.setItem("phone", phone);
+                  alert(LOGIN_SUCCESS_PREFIX + userName);
+                  /**
+                   * @note 这里假定 login 页面不是首页面，大作业中这样写的话需要作分支判断
+                   */
+                  router.push("/mainpage");
+              }
+              else {
+                  alert(LOGIN_FAILED);
+              }
+          })
+          .catch((err) => alert(FAILURE_PREFIX + err));
   };
 
   return (
@@ -117,7 +126,7 @@ const Page = () => {
                 value: userName,
                 onChange: (e) => setUserName(e.target.value),
               }}
-              placeholder={'用户名: admin or user'}
+              placeholder={'用户名: '}
               rules={[
                 {
                   required: true,
@@ -140,7 +149,7 @@ const Page = () => {
                 value: password,
                 onChange: (e) => setPassword(e.target.value),
               }}
-              placeholder={'密码: ant.design'}
+              placeholder={'密码:'}
               rules={[
                 {
                   required: true,
@@ -163,7 +172,7 @@ const Page = () => {
                 value: email,
                 onChange: (e) => setEmail(e.target.value),
               }}
-              placeholder={'邮箱: email'}
+              placeholder={'邮箱: '}
               rules={[
                 {
                   required: true,
@@ -186,7 +195,7 @@ const Page = () => {
                 value: phone,
                 onChange: (e) => setPhone(e.target.value),
               }}
-              placeholder={'电话号码: phone'}
+              placeholder={'电话号码: '}
               rules={[
                 {
                   required: true,
