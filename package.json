@@ -19,6 +19,7 @@
     "@vercel/postgres": "^0.10.0",
     "antd": "^5.24.4",
     "bcryptjs": "^3.0.2",
+    "expo-secure-store": "^14.0.1",
     "jest-sonar-reporter": "^2.0.0",
     "next": "15.1.7",
     "next-redux-wrapper": "^8.1.0",

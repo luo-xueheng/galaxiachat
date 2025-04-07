@@ -18,7 +18,6 @@ import { Button, Divider, Space, Tabs, message, theme } from 'antd';
 import type { CSSProperties } from 'react';
 import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
 import { useState } from 'react';
-//import { useRouter } from 'next/compat/router'; // 引入 useRouter
 import{ useRouter } from 'next/navigation'; // 使用新的 useRouter
 import { useEffect } from 'react';
 import { setName, setToken } from "../redux/auth";

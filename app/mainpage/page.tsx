@@ -47,12 +47,14 @@ const Page = () => {
 
         // **清空 Redux 里的 token**
         dispatch(setToken(null));
+        
 
         // **清空 localStorage**
         localStorage.removeItem("token");
+        localStorage.removeItem("userName");
 
         // 跳转回登录页面
-        router.push("/login");
+        router.push(".");
       } else {
         alert(FAILURE_PREFIX + (data.message || LOGOUT_FAILED));
       }

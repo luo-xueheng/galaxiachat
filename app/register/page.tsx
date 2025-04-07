@@ -16,7 +16,7 @@ import {
 } from '@ant-design/pro-components';
 import { Button, Divider, Space, Tabs, message, theme } from 'antd';
 import type { CSSProperties } from 'react';
-import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
+import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX,REGISTER_FAILED,REGISTER_SUCCESS_PREFIX,REGISTER_REQUIRED} from "../constants/string";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from "react-redux";
@@ -43,7 +43,8 @@ const Page = () => {
   const router = useRouter(); // 获取 router 实例
   const dispatch = useDispatch();
   const register = async () => {
-    fetch(`${BACKEND_URL}/api/login`, {
+    console.log("userName"+userName)
+    fetch(`${BACKEND_URL}/api/register`, {
           method: "POST",
           body: JSON.stringify({
               userName,
@@ -60,17 +61,14 @@ const Page = () => {
                     // 存储 token
                   localStorage.setItem("token", res.token);
                   localStorage.setItem("userName", userName);
-                  localStorage.setItem("password", password);
-                  localStorage.setItem("email", email);
-                  localStorage.setItem("phone", phone);
-                  alert(LOGIN_SUCCESS_PREFIX + userName);
+                  alert(REGISTER_SUCCESS_PREFIX + userName);
                   /**
                    * @note 这里假定 login 页面不是首页面，大作业中这样写的话需要作分支判断
                    */
                   router.push("/mainpage");
               }
               else {
-                  alert(LOGIN_FAILED);
+                  alert(REGISTER_FAILED);
               }
           })
           .catch((err) => alert(FAILURE_PREFIX + err));
