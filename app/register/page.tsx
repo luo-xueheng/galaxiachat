@@ -44,6 +44,9 @@ const Page = () => {
   const dispatch = useDispatch();
   const register = async () => {
     console.log("userName"+userName)
+    console.log("phone"+phone)
+    console.log("password"+password)
+    
     fetch(`${BACKEND_URL}/api/register`, {
           method: "POST",
           body: JSON.stringify({
@@ -130,6 +133,10 @@ const Page = () => {
                   required: true,
                   message: '请输入用户名!',
                 },
+                {
+                  max: 50,
+                  message: '用户名不能超过50个字符',
+                },
               ]}
             />
             <ProFormText.Password
@@ -153,6 +160,29 @@ const Page = () => {
                   required: true,
                   message: '请输入密码！',
                 },
+                {
+                  min: 6,
+                  message: '密码至少6位',
+                },
+                {
+                  max: 32,
+                  message: '密码最多32位',
+                },
+                {
+                  validator: async (_, value) => {
+                    if (!/[A-Z]/.test(value)) {
+                      throw new Error('密码必须包含至少一个大写字母');
+                    }
+                    const specialChars = "!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?";
+                    const specialCharRegex = new RegExp(`[${specialChars.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}]`);
+                    if (!specialCharRegex.test(value)) {
+                      throw new Error('密码必须包含至少一个特殊字符');
+                    }
+                    if (/\s/.test(value)) {
+                      throw new Error('密码不能包含空格');
+                    }
+                  }
+                }
               ]}
             />
              <ProFormText
@@ -176,6 +206,10 @@ const Page = () => {
                   required: true,
                   message: '请输入邮箱!',
                 },
+                {
+                  pattern: /^[\w.-]+@[\w.-]+\.\w+$/,
+                  message: '邮箱格式不正确!',
+                },
               ]}
             />
              <ProFormText
@@ -198,6 +232,10 @@ const Page = () => {
                 {
                   required: true,
                   message: '请输入电话号码!',
+                },
+                {
+                  pattern: /^\d{6,20}$/,
+                  message: '手机号应为6-20位数字',
                 },
               ]}
             />
