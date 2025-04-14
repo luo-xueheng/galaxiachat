@@ -69,6 +69,7 @@ const Page = () => {
         logout
       </Button>
       <Button onClick={() => router.push("/signout")}>signout</Button>
+      <Button onClick={() => router.push("/searchuser")}>searchuser</Button>
     </Flex>
   );
 };

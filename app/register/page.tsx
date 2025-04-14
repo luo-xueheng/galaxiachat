@@ -47,7 +47,7 @@ const Page = () => {
     console.log("phone"+phone)
     console.log("password"+password)
     
-    fetch(`${BACKEND_URL}/api/register`, {
+    fetch(`/api/register`, {
           method: "POST",
           body: JSON.stringify({
               userName,
