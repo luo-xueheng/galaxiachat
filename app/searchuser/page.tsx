@@ -25,7 +25,37 @@ type UserInfo = {
   createdAt?: string;
   // 你可以根据后端返回字段再补充
 };
+// 全局WebSocket连接实例
+let ws: WebSocket | null = null;
+const connectWebSocket = async (): Promise<WebSocket> => {
+  const token = localStorage.getItem('token'); // 从 localStorage 获取 token
+  if (!token) {
+    throw new Error("Token 不存在，无法建立 WebSocket 连接");
+  }
 
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    return ws;
+  }
+
+  return new Promise((resolve, reject) => {
+    ws = new WebSocket(`wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${token}`);
+
+    ws.onopen = () => {
+      console.log('WebSocket 连接已建立');
+      resolve(ws as WebSocket);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket 连接错误:', error);
+      reject(error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket 连接已关闭');
+      ws = null;
+    };
+  });
+};
 const { Search } = Input;
 
 const SearchUserPage: React.FC = () => {
@@ -77,11 +107,6 @@ const SearchUserPage: React.FC = () => {
     }
   };
 
-  const addFriend = async (item: Friend) => {
-    message.info(`尝试添加好友：${item.userName}`);
-    // TODO: 实现添加好友功能
-  };
-
   const fetchUserInfo = async (username: string) => {
     setInfoLoading(true);
     setSelectedUserInfo(null);
@@ -105,7 +130,44 @@ const SearchUserPage: React.FC = () => {
       setInfoLoading(false);
     }
   };
-
+  const addFriend = async (item: Friend) => {
+    try {
+      const socket = await connectWebSocket();
+  
+      const request = {
+        action: "send_request",
+        username: item.userName,
+        request_type: "direct",
+      };
+  
+      socket.send(JSON.stringify(request));
+  
+      socket.onmessage = (event) => {
+        try {
+          const response = JSON.parse(event.data);
+          if (response.status === "success") {
+            message.success(`好友请求已成功发送给 ${item.userName}`);
+          } else {
+            message.error(`发送好友请求失败: ${response.message || '未知错误'}`);
+          }
+        } catch (e) {
+          console.error('解析响应失败:', e);
+          message.error('处理服务器响应时出错');
+        }
+      };
+    } catch (error) {
+      console.error('添加好友失败:', error);
+      message.error('连接服务器失败，请稍后重试');
+    }
+  };
+  
+  // 组件卸载时关闭连接
+const closeWebSocket = () => {
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+};
   const renderPopoverContent = () => {
     if (infoLoading) return <Spin />;
     if (!selectedUserInfo) return <div>未找到信息</div>;
