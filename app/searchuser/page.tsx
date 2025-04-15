@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Input, List, Avatar, Button, Space, message, Empty } from 'antd';
+import { Input, List, Avatar, Button, Space, message, Empty, Popover, Spin } from 'antd';
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { setName, setToken } from "../redux/auth";
@@ -17,17 +17,29 @@ type Friend = {
   is_friend: boolean;
 };
 
+type UserInfo = {
+  userName: string;
+  avatar: string;
+  email?: string;
+  phone?: string;
+  createdAt?: string;
+  // 你可以根据后端返回字段再补充
+};
+
 const { Search } = Input;
 
 const SearchUserPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Friend[]>([]);
+  const [selectedUserInfo, setSelectedUserInfo] = useState<UserInfo | null>(null);
+  const [openPopoverUser, setOpenPopoverUser] = useState<string | null>(null);
+  const [infoLoading, setInfoLoading] = useState(false);
+
   const userName = useSelector((state: RootState) => state.auth.name);
   const token = useSelector((state: RootState) => state.auth.token);
   const router = useRouter();
   const dispatch = useDispatch();
 
-  // 初始化：恢复 token 和用户名
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUserName = localStorage.getItem("userName");
@@ -51,9 +63,6 @@ const SearchUserPage: React.FC = () => {
       );
 
       const data = await res.json();
-      console.log("搜索结果返回：", data);
-
-      // ✅ 注意这里根据你后端返回的是 users，不是 friends
       if (data.users && Array.isArray(data.users)) {
         setResults(data.users);
       } else {
@@ -70,7 +79,45 @@ const SearchUserPage: React.FC = () => {
 
   const addFriend = async (item: Friend) => {
     message.info(`尝试添加好友：${item.userName}`);
-    // 这里可以集成 WebSocket 或请求
+    // TODO: 实现添加好友功能
+  };
+
+  const fetchUserInfo = async (username: string) => {
+    setInfoLoading(true);
+    setSelectedUserInfo(null);
+    setOpenPopoverUser(username);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/user/${username}`, {
+        headers: {
+          'Authorization': token,
+        },
+      });
+
+      if (!res.ok) throw new Error('请求失败');
+      const data = await res.json();
+      setSelectedUserInfo(data);
+    } catch (err) {
+      console.error("获取用户信息失败：", err);
+      message.error("获取用户信息失败");
+      setSelectedUserInfo(null);
+    } finally {
+      setInfoLoading(false);
+    }
+  };
+
+  const renderPopoverContent = () => {
+    if (infoLoading) return <Spin />;
+    if (!selectedUserInfo) return <div>未找到信息</div>;
+
+    return (
+      <div>
+        <p><strong>用户名:</strong> {selectedUserInfo.userName}</p>
+        {selectedUserInfo.email && <p><strong>邮箱:</strong> {selectedUserInfo.email}</p>}
+        {selectedUserInfo.phone && <p><strong>电话:</strong> {selectedUserInfo.phone}</p>}
+        {selectedUserInfo.createdAt && <p><strong>注册时间:</strong> {selectedUserInfo.createdAt}</p>}
+      </div>
+    );
   };
 
   return (
@@ -93,15 +140,28 @@ const SearchUserPage: React.FC = () => {
             <List.Item
               key={item.userName}
               actions={[
-                item.is_friend ? (
-                  <Button type="default" disabled>
-                    已添加
+                <Space key="actions" size="middle">
+                  <Button
+                    type="primary"
+                    onClick={() => addFriend(item)}
+                    disabled={item.is_friend}
+                  >
+                    {item.is_friend ? "已添加" : "添加好友"}
                   </Button>
-                ) : (
-                  <Button type="primary" onClick={() => addFriend(item)}>
-                    添加好友
-                  </Button>
-                ),
+
+                  <Popover
+                    title="用户信息"
+                    trigger="click"
+                    open={openPopoverUser === item.userName}
+                    onOpenChange={(visible) => {
+                      if (visible) fetchUserInfo(item.userName);
+                      else setOpenPopoverUser(null);
+                    }}
+                    content={renderPopoverContent()}
+                  >
+                    <Button type="default">查看信息</Button>
+                  </Popover>
+                </Space>,
               ]}
             >
               <List.Item.Meta
