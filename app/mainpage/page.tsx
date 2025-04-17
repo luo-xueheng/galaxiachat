@@ -1,4 +1,5 @@
-"use client";
+'use client';
+
 import { Button, Flex, List, Avatar, Collapse, Typography, message } from "antd";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
@@ -22,24 +23,76 @@ type Group = {
   users: Friend[];
 };
 
+type FriendRequest = {
+  request_id: string;
+  sender_name: string;
+  request_type: string;
+};
+
+let ws: WebSocket | null = null;
+
 const Page = () => {
   const userName = useSelector((state: RootState) => state.auth.name);
   const token = useSelector((state: RootState) => state.auth.token);
   const router = useRouter();
   const dispatch = useDispatch();
 
-  const [groups, setGroups] = useState<Group[]>([]); // Initialize as empty array
-  const [uncategorized, setUncategorized] = useState<Friend[]>([]); // Initialize as empty array
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [uncategorized, setUncategorized] = useState<Friend[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // 初始化用户信息和 WebSocket
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUserName = localStorage.getItem("userName");
 
     if (storedToken) dispatch(setToken(storedToken));
     if (storedUserName) dispatch(setName(storedUserName));
+
+    const connectWebSocket = async (): Promise<WebSocket> => {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Token 不存在，无法建立 WebSocket 连接");
+
+      return new Promise((resolve, reject) => {
+        ws = new WebSocket(
+          `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token)}`
+        );
+
+        ws.onopen = () => {
+          console.log("✅ WebSocket 连接已建立");
+          resolve(ws);
+        };
+
+        ws.onerror = (error) => {
+          console.error("❌ WebSocket 连接错误:", error);
+          reject(error);
+        };
+
+        ws.onclose = () => {
+          console.warn("⚠️ WebSocket 连接已关闭");
+          ws = null;
+        };
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log("收到消息:", data);
+
+          if (data.type === "friend_request" && data.sender_name && data.request_id) {
+            setPendingRequests((prev) => [...prev, {
+              request_id: data.request_id,
+              sender_name: data.sender_name,
+              request_type: data.request_type,
+            }]);
+          }
+        };
+      });
+    };
+
+    connectWebSocket();
   }, [dispatch]);
 
+  // 获取好友列表
   const fetchFriends = async () => {
     try {
       setLoading(true);
@@ -49,9 +102,10 @@ const Page = () => {
         },
       });
       const data = await res.json();
+      console.log("好友列表数据:", data);
       if (data.code === 0) {
-        setGroups(data.groups || []); // Ensure groups is always an array
-        setUncategorized(data.uncategorized || []); // Ensure uncategorized is always an array
+        setGroups(data.groups || []);
+        setUncategorized(data.uncategorized || []);
       } else {
         message.error("获取好友列表失败：" + data.message);
       }
@@ -70,10 +124,7 @@ const Page = () => {
 
   const logout = async () => {
     try {
-      if (!token) {
-        console.error("No JWT token found");
-        return;
-      }
+      if (!token) return;
 
       const response = await fetch(`${BACKEND_URL}/api/logout`, {
         method: "POST",
@@ -99,6 +150,48 @@ const Page = () => {
     }
   };
 
+  const handleAccept = async (request_id: string) => {
+    try {
+      const socket = new WebSocket(
+        `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token!)}`
+      );
+
+      socket.onopen = () => {
+        socket.send(JSON.stringify({
+          action: "respond_request",
+          request_id:request_id,
+          response: "accept",
+        }));
+        alert("已接受好友请求");
+        setPendingRequests((prev) => prev.filter((r) => r.request_id !== request_id));
+      };
+    } catch (err) {
+      console.error("接受失败", err);
+      message.error("操作失败");
+    }
+  };
+
+  const handleReject = async (request_id: string) => {
+    try {
+      const socket = new WebSocket(
+        `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token!)}`
+      );
+
+      socket.onopen = () => {
+        socket.send(JSON.stringify({
+          action: "respond_request",
+          request_id:request_id,
+          response:"reject",
+        }));
+        alert("已拒绝好友请求");
+        setPendingRequests((prev) => prev.filter((r) => r.request_id !== request_id));
+      };
+    } catch (err) {
+      console.error("拒绝失败", err);
+      message.error("操作失败");
+    }
+  };
+
   const renderFriendList = (friends: Friend[]) => (
     <List
       itemLayout="horizontal"
@@ -117,16 +210,36 @@ const Page = () => {
   return (
     <Flex vertical gap="middle" style={{ padding: 24 }}>
       <Flex gap="small">
-        <Button type="primary" onClick={logout}>
-          logout
-        </Button>
+        <Button type="primary" onClick={logout}>logout</Button>
         <Button onClick={() => router.push("/signout")}>signout</Button>
         <Button onClick={() => router.push("/searchuser")}>searchuser</Button>
       </Flex>
+
+      {/* ✅ 显示待处理好友请求 */}
+      {pendingRequests.length > 0 && (
+        <div style={{ background: "#fffbe6", padding: 16, borderRadius: 8, border: "1px solid #ffe58f" }}>
+          <Title level={4}>待处理好友请求</Title>
+          <List
+            dataSource={pendingRequests}
+            renderItem={(request) => (
+              <List.Item
+                actions={[
+                  <Button key="accept" type="link" onClick={() => handleAccept(request.request_id)}>接受</Button>,
+                  <Button key="reject" type="link" danger onClick={() => handleReject(request.request_id)}>拒绝</Button>
+                ]}
+              >
+                <List.Item.Meta
+                  title={request.sender_name}
+                  description={`请求加你为好友（类型：${request.request_type}）`}
+                />
+              </List.Item>
+            )}
+          />
+        </div>
+      )}
+
       <Title level={3}>好友列表</Title>
-      <Button onClick={fetchFriends} loading={loading}>
-        刷新好友列表
-      </Button>
+      <Button onClick={fetchFriends} loading={loading}>刷新好友列表</Button>
       <Collapse defaultActiveKey={['uncategorized', ...(groups?.map((g) => g.id) || [])]}>
         <Panel header="未分组" key="uncategorized">
           {renderFriendList(uncategorized)}
