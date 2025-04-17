@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Flex, List, Avatar, Collapse, Typography, message } from "antd";
+import { Button, Flex, List, Avatar, Collapse, Typography, message, Popconfirm } from "antd";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
@@ -190,15 +190,61 @@ const Page = () => {
       message.error("操作失败");
     }
   };
-
-  const renderFriendList = (friends: Friend[]) => (
+  const handleDeleteFriend = async (userNameToDelete: string, groupId?: string) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/user/delete`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({ userName: userNameToDelete }),
+      });
+      const data = await response.json();
+      console.log("删除好友返回：",data)
+      if (data.code === 0) {
+        message.success(`已删除好友 ${userNameToDelete}`);
+        // 本地移除该好友
+        if (groupId) {
+          // 从某个分组中移除
+          setGroups(prev =>
+            prev.map(g => g.id === groupId
+              ? { ...g, users: g.users.filter(u => u.userName !== userNameToDelete) }
+              : g
+            )
+          );
+        } else {
+          // 从未分组列表中移除
+          setUncategorized(prev => prev.filter(u => u.userName !== userNameToDelete));
+        }
+      } else {
+        message.error("删除失败：" + data.message);
+      }
+    } catch (err) {
+      console.error("删除好友失败", err);
+      message.error("删除请求失败");
+    }
+  };
+  const renderFriendList = (friends: Friend[], groupId?: string) => (
     <List
       itemLayout="horizontal"
       dataSource={friends}
       renderItem={(friend) => (
-        <List.Item>
+        <List.Item
+          actions={[
+            <Popconfirm
+              title={`确定要删除 ${friend.userName} 吗？`}
+              onConfirm={() => handleDeleteFriend(friend.userName, groupId)}
+              okText="删除"
+              cancelText="取消"
+            >
+              <Button key="delete" type="link" danger>
+                删除
+              </Button>
+            </Popconfirm>
+          ]}
+        >
           <List.Item.Meta
-            avatar={<Avatar src={friend.avatar} />}
+            avatar={<Avatar src={friend.avatar || undefined} />}
             title={friend.userName}
           />
         </List.Item>
