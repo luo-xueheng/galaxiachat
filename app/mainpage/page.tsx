@@ -102,10 +102,9 @@ const Page = () => {
         },
       });
       const data = await res.json();
-      console.log("好友列表数据:", data);
       if (data.code === 0) {
-        setGroups(data.groups || []);
-        setUncategorized(data.uncategorized || []);
+        setGroups(data.data.groups || []);
+        setUncategorized(data.data.uncategorized || []);
       } else {
         message.error("获取好友列表失败：" + data.message);
       }
