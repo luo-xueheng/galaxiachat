@@ -1,12 +1,28 @@
 'use client';
 
-import { Button, Flex, List, Avatar, Collapse, Typography, message, Popconfirm } from "antd";
+import {
+  Button,
+  Flex,
+  List,
+  Avatar,
+  Collapse,
+  Typography,
+  message,
+  Popconfirm,
+  Dropdown,
+  Menu,
+} from "antd";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
 import { setName, setToken } from "../redux/auth";
 import { RootState } from "../redux/store";
-import { BACKEND_URL, FAILURE_PREFIX, LOGOUT_SUCCESS, LOGOUT_FAILED } from "../constants/string";
+import {
+  BACKEND_URL,
+  FAILURE_PREFIX,
+  LOGOUT_SUCCESS,
+  LOGOUT_FAILED,
+} from "../constants/string";
 
 const { Panel } = Collapse;
 const { Title } = Typography;
@@ -40,9 +56,9 @@ const Page = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [uncategorized, setUncategorized] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [availableGroups, setAvailableGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 初始化用户信息和 WebSocket
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUserName = localStorage.getItem("userName");
@@ -76,14 +92,19 @@ const Page = () => {
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          console.log("收到消息:", data);
-
-          if (data.type === "friend_request" && data.sender_name && data.request_id) {
-            setPendingRequests((prev) => [...prev, {
-              request_id: data.request_id,
-              sender_name: data.sender_name,
-              request_type: data.request_type,
-            }]);
+          if (
+            data.type === "friend_request" &&
+            data.sender_name &&
+            data.request_id
+          ) {
+            setPendingRequests((prev) => [
+              ...prev,
+              {
+                request_id: data.request_id,
+                sender_name: data.sender_name,
+                request_type: data.request_type,
+              },
+            ]);
           }
         };
       });
@@ -92,14 +113,11 @@ const Page = () => {
     connectWebSocket();
   }, [dispatch]);
 
-  // 获取好友列表
   const fetchFriends = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${BACKEND_URL}/api/user/friends`, {
-        headers: {
-          Authorization: `${token}`,
-        },
+        headers: { Authorization: `${token}` },
       });
       const data = await res.json();
       if (data.code === 0) {
@@ -115,16 +133,30 @@ const Page = () => {
     }
   };
 
+  const fetchGroupTypes = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/friends/groups`, {
+        method: "GET",
+      });
+      const data = await res.json();
+      console.log("获取分组", data);
+      if (data.code === 0 && Array.isArray(data.data)) {
+        setAvailableGroups(data.data);
+      }
+    } catch (err) {
+      console.error("获取分组失败", err);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchFriends();
+      fetchGroupTypes();
     }
   }, [token]);
 
   const logout = async () => {
     try {
-      if (!token) return;
-
       const response = await fetch(`${BACKEND_URL}/api/logout`, {
         method: "POST",
         headers: {
@@ -148,7 +180,6 @@ const Page = () => {
       alert(FAILURE_PREFIX + error);
     }
   };
-
   const handleAccept = async (request_id: string) => {
     try {
       const socket = new WebSocket(
@@ -190,61 +221,89 @@ const Page = () => {
       message.error("操作失败");
     }
   };
-  const handleDeleteFriend = async (userNameToDelete: string, groupId?: string) => {
+
+  const handleDelete = async (friendName: string) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/user/delete`, {
+      const res = await fetch(`${BACKEND_URL}/api/user/friends`, {
         method: "DELETE",
         headers: {
           Authorization: `${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userName: userNameToDelete }),
+        body: JSON.stringify({ userName: friendName }),
       });
-      const data = await response.json();
-      console.log("删除好友返回：",data)
+      const data = await res.json();
       if (data.code === 0) {
-        message.success(`已删除好友 ${userNameToDelete}`);
-        // 本地移除该好友
-        if (groupId) {
-          // 从某个分组中移除
-          setGroups(prev =>
-            prev.map(g => g.id === groupId
-              ? { ...g, users: g.users.filter(u => u.userName !== userNameToDelete) }
-              : g
-            )
-          );
-        } else {
-          // 从未分组列表中移除
-          setUncategorized(prev => prev.filter(u => u.userName !== userNameToDelete));
-        }
+        message.success("删除成功");
+        fetchFriends();
       } else {
         message.error("删除失败：" + data.message);
       }
     } catch (err) {
-      console.error("删除好友失败", err);
-      message.error("删除请求失败");
+      message.error("请求失败");
     }
   };
-  const renderFriendList = (friends: Friend[], groupId?: string) => (
+
+  const moveToGroup = async (friendName: string, group: string) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/friends/move`, {
+        method: "PUT",
+        headers: {
+          Authorization: `${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userName: friendName,
+          group: [group],
+        }),
+      });
+      const data = await res.json();
+      if (data.code === 0) {
+        message.success(`已将 ${friendName} 移入 ${group}`);
+        fetchFriends();
+      } else {
+        message.error("分组失败：" + data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      message.error("网络请求失败");
+    }
+  };
+
+  const renderFriendList = (friends: Friend[]) => (
     <List
       itemLayout="horizontal"
       dataSource={friends}
       renderItem={(friend) => (
         <List.Item
           actions={[
-            <Popconfirm
-              title={`确定要删除 ${friend.userName} 吗？`}
-              onConfirm={() => handleDeleteFriend(friend.userName, groupId)}
-              okText="删除"
-              cancelText="取消"
+            <Dropdown
+              key="group"
+              overlay={
+                <Menu
+                  onClick={({ key }) => moveToGroup(friend.userName, key)}
+                  items={availableGroups.map((g) => ({
+                    key: g,
+                    label: g,
+                  }))}
+                />
+              }
             >
-              <Button key="delete" type="link" danger>
-                删除
-              </Button>
-            </Popconfirm>
+              <Button>移动到分组</Button>
+            </Dropdown>,
+            <Popconfirm
+              title="确认删除该好友？"
+              onConfirm={() => handleDelete(friend.userName)}
+              okText="确认"
+              cancelText="取消"
+              key="delete"
+            >
+              <Button danger>删除</Button>
+            </Popconfirm>,
           ]}
         >
           <List.Item.Meta
-            avatar={<Avatar src={friend.avatar || undefined} />}
+            avatar={<Avatar src={friend.avatar} />}
             title={friend.userName}
           />
         </List.Item>
@@ -255,22 +314,43 @@ const Page = () => {
   return (
     <Flex vertical gap="middle" style={{ padding: 24 }}>
       <Flex gap="small">
-        <Button type="primary" onClick={logout}>logout</Button>
+        <Button type="primary" onClick={logout}>
+          logout
+        </Button>
         <Button onClick={() => router.push("/signout")}>signout</Button>
         <Button onClick={() => router.push("/searchuser")}>searchuser</Button>
       </Flex>
 
-      {/* ✅ 显示待处理好友请求 */}
       {pendingRequests.length > 0 && (
-        <div style={{ background: "#fffbe6", padding: 16, borderRadius: 8, border: "1px solid #ffe58f" }}>
+        <div
+          style={{
+            background: "#fffbe6",
+            padding: 16,
+            borderRadius: 8,
+            border: "1px solid #ffe58f",
+          }}
+        >
           <Title level={4}>待处理好友请求</Title>
           <List
             dataSource={pendingRequests}
             renderItem={(request) => (
               <List.Item
                 actions={[
-                  <Button key="accept" type="link" onClick={() => handleAccept(request.request_id)}>接受</Button>,
-                  <Button key="reject" type="link" danger onClick={() => handleReject(request.request_id)}>拒绝</Button>
+                  <Button
+                    key="accept"
+                    type="link"
+                    onClick={() => handleAccept(request.request_id)}
+                  >
+                    接受
+                  </Button>,
+                  <Button
+                    key="reject"
+                    type="link"
+                    danger
+                    onClick={() => handleReject(request.request_id)}
+                  >
+                    拒绝
+                  </Button>,
                 ]}
               >
                 <List.Item.Meta
@@ -284,8 +364,12 @@ const Page = () => {
       )}
 
       <Title level={3}>好友列表</Title>
-      <Button onClick={fetchFriends} loading={loading}>刷新好友列表</Button>
-      <Collapse defaultActiveKey={['uncategorized', ...(groups?.map((g) => g.id) || [])]}>
+      <Button onClick={fetchFriends} loading={loading}>
+        刷新好友列表
+      </Button>
+      <Collapse
+        defaultActiveKey={["uncategorized", ...(groups?.map((g) => g.id) || [])]}
+      >
         <Panel header="未分组" key="uncategorized">
           {renderFriendList(uncategorized)}
         </Panel>
