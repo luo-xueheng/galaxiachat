@@ -81,6 +81,7 @@ const SearchUserPage: React.FC = () => {
 
     const initWebSocket = async () => {
       try {
+        console.log("获取申请结果")
         socket = await connectWebSocket();
         socket.onmessage = (event) => {
           console.log(event.data)
@@ -149,6 +150,7 @@ const SearchUserPage: React.FC = () => {
           ...user,
           is_requested: !user.is_friend && pendingList.includes(user.userName),
         }));
+        cleanPendingList(data.users); // ✅ 清理本地缓存
         setResults(merged);
       } else {
         message.warning('没有搜索结果');
@@ -232,7 +234,17 @@ const SearchUserPage: React.FC = () => {
       return [];
     }
   };
-
+  const cleanPendingList = (users: Friend[]) => {
+    const pending = getPendingRequests();
+  
+    // 找出依然是“未加为好友”但在 pending 列表里的用户
+    const stillPending = users
+      .filter(user => !user.is_friend && pending.includes(user.userName))
+      .map(user => user.userName);
+  
+    // 只保留这些还在申请中的用户
+    localStorage.setItem(PENDING_REQUESTS_KEY, JSON.stringify(stillPending));
+  };
   const renderPopoverContent = () => {
     if (infoLoading) return <Spin />;
     if (!selectedUserInfo) return <div>未找到信息</div>;
