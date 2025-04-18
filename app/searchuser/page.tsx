@@ -24,14 +24,11 @@ type UserInfo = {
   email?: string;
   phone?: string;
   createdAt?: string;
-  // 你可以根据后端返回字段再补充
 };
-// 全局WebSocket连接实例
+
 let ws: WebSocket | null = null;
 const connectWebSocket = async (): Promise<WebSocket> => {
   const token = localStorage.getItem('token');
-  console.log("token:", token);
-
   if (!token) {
     throw new Error("❌ Token 不存在，无法建立 WebSocket 连接");
   }
@@ -39,7 +36,6 @@ const connectWebSocket = async (): Promise<WebSocket> => {
   return new Promise((resolve, reject) => {
     ws = new WebSocket(
       `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token)}`
-      //`ws://127.0.0.1:8000/ws/friend-request/?token=${encodeURIComponent(token)}`
     );
 
     ws.onopen = () => {
@@ -58,6 +54,7 @@ const connectWebSocket = async (): Promise<WebSocket> => {
     };
   });
 };
+
 const { Search } = Input;
 
 const SearchUserPage: React.FC = () => {
@@ -69,7 +66,6 @@ const SearchUserPage: React.FC = () => {
 
   const userName = useSelector((state: RootState) => state.auth.name);
   const token = useSelector((state: RootState) => state.auth.token);
-  const router = useRouter();
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -80,10 +76,61 @@ const SearchUserPage: React.FC = () => {
     if (storedUserName) dispatch(setName(storedUserName));
   }, [dispatch]);
 
+  useEffect(() => {
+    let socket: WebSocket | null = null;
+
+    const initWebSocket = async () => {
+      try {
+        socket = await connectWebSocket();
+        socket.onmessage = (event) => {
+          console.log(event.data)
+          const data = JSON.parse(event.data);
+          console.log("📨 收到 WebSocket 消息：", data);
+
+          if (data.action === "respond_request") {
+            const { from_user, result } = data;
+
+            if (result === "accepted") {
+              message.success(`${from_user} 接受了你的好友请求`);
+              setResults(prev =>
+                prev.map(user =>
+                  user.userName === from_user
+                    ? { ...user, is_friend: true, is_requested: false }
+                    : user
+                )
+              );
+            } else if (result === "rejected") {
+              message.warning(`${from_user} 拒绝了你的好友请求`);
+              const updatedPending = getPendingRequests().filter(u => u !== from_user);
+              localStorage.setItem(PENDING_REQUESTS_KEY, JSON.stringify(updatedPending));
+              setResults(prev =>
+                prev.map(user =>
+                  user.userName === from_user
+                    ? { ...user, is_requested: false }
+                    : user
+                )
+              );
+            }
+          }
+        };
+      } catch (err) {
+        console.error("WebSocket 初始化失败", err);
+      }
+    };
+
+    initWebSocket();
+
+    return () => {
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, []);
+
   const onSearch: SearchProps['onSearch'] = async (value) => {
     if (!value) return;
     setLoading(true);
-  
+
     try {
       const res = await fetch(
         `${BACKEND_URL}/api/users/search?query=${encodeURIComponent(value)}`,
@@ -93,10 +140,10 @@ const SearchUserPage: React.FC = () => {
           },
         }
       );
-  
+
       const data = await res.json();
       const pendingList = getPendingRequests();
-  
+
       if (data.users && Array.isArray(data.users)) {
         const merged = data.users.map((user: Friend) => ({
           ...user,
@@ -138,33 +185,34 @@ const SearchUserPage: React.FC = () => {
       setInfoLoading(false);
     }
   };
+
   const addFriend = async (item: Friend) => {
     try {
       const socket = await connectWebSocket();
-  
+
       const request = {
         action: "send_request",
         userName: item.userName,
         request_type: "direct",
       };
       socket.send(JSON.stringify(request));
-  
+
       socket.onmessage = (event) => {
         try {
           const response = JSON.parse(event.data);
           if (response.status === "success") {
             alert(`好友请求已成功发送给 ${item.userName}`);
-  
-            // ✅ 更新状态（临时前端标记）
+
             const newPendingList = [...getPendingRequests(), item.userName];
             localStorage.setItem(PENDING_REQUESTS_KEY, JSON.stringify(newPendingList));
-            setResults(prev => prev.map(user => (
+            setResults(prev => prev.map(user =>
               user.userName === item.userName ? { ...user, is_requested: true } : user
-            )));
+            ));
           } 
-          else {
-            alert(`发送好友${item.userName}请求失败: ${response.message || '未知错误'}`);
-          }
+          //这里总在莫名触发
+          // else {
+          //   alert(`发送好友请求失败: ${response.message || '未知错误'}`);
+          // }
         } catch (e) {
           console.error('解析响应失败:', e);
           alert('处理服务器响应时出错');
@@ -175,8 +223,7 @@ const SearchUserPage: React.FC = () => {
       alert('连接服务器失败，请稍后重试');
     }
   };
-  
-  // 获取 localStorage 中的已申请记录
+
   const getPendingRequests = (): string[] => {
     try {
       const data = localStorage.getItem(PENDING_REQUESTS_KEY);
@@ -185,14 +232,7 @@ const SearchUserPage: React.FC = () => {
       return [];
     }
   };
-  
-  // 组件卸载时关闭连接
-const closeWebSocket = () => {
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
-};
+
   const renderPopoverContent = () => {
     if (infoLoading) return <Spin />;
     if (!selectedUserInfo) return <div>未找到信息</div>;
@@ -229,12 +269,12 @@ const closeWebSocket = () => {
               actions={[
                 <Space key="actions" size="middle">
                   <Button
-                  type="primary"
-                  onClick={() => addFriend(item)}
-                  disabled={item.is_friend || item.is_requested}
-                >
-                  {item.is_friend ? "已添加" : item.is_requested ? "已申请" : "添加好友"}
-                </Button>
+                    type="primary"
+                    onClick={() => addFriend(item)}
+                    disabled={item.is_friend || item.is_requested}
+                  >
+                    {item.is_friend ? "已添加" : item.is_requested ? "已申请" : "添加好友"}
+                  </Button>
 
                   <Popover
                     title="用户信息"
