@@ -93,14 +93,16 @@ const Page = () => {
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
           if (data.type === "friend_request" && data.sender_name && data.request_id) {
-            setPendingRequests((prev) => [
-              ...prev,
-              {
+            setPendingRequests((prev) => {
+              if (prev.some((r) => r.request_id === data.request_id)) {
+                return prev; // 已存在，忽略
+              }
+              return [...prev, {
                 request_id: data.request_id,
                 sender_name: data.sender_name,
                 request_type: data.request_type,
-              },
-            ]);
+              }];
+            });
           }
         };
       });
