@@ -74,6 +74,7 @@ const SearchUserPage: React.FC = () => {
 
     if (storedToken) dispatch(setToken(storedToken));
     if (storedUserName) dispatch(setName(storedUserName));
+    cleanPendingList
   }, [dispatch]);
 
   useEffect(() => {
@@ -103,7 +104,7 @@ const SearchUserPage: React.FC = () => {
             } else if (result === "rejected") {
               message.warning(`${from_user} 拒绝了你的好友请求`);
               const updatedPending = getPendingRequests().filter(u => u !== from_user);
-              localStorage.setItem(PENDING_REQUESTS_KEY, JSON.stringify(updatedPending));
+              setPendingRequests(updatedPending);
               setResults(prev =>
                 prev.map(user =>
                   user.userName === from_user
@@ -144,7 +145,7 @@ const SearchUserPage: React.FC = () => {
 
       const data = await res.json();
       const pendingList = getPendingRequests();
-
+      //cleanPendingList(data.users); // ✅ 清理本地缓存
       if (data.users && Array.isArray(data.users)) {
         const merged = data.users.map((user: Friend) => ({
           ...user,
@@ -206,7 +207,7 @@ const SearchUserPage: React.FC = () => {
             alert(`好友请求已成功发送给 ${item.userName}`);
 
             const newPendingList = [...getPendingRequests(), item.userName];
-            localStorage.setItem(PENDING_REQUESTS_KEY, JSON.stringify(newPendingList));
+            setPendingRequests(newPendingList);
             setResults(prev => prev.map(user =>
               user.userName === item.userName ? { ...user, is_requested: true } : user
             ));
@@ -228,10 +229,18 @@ const SearchUserPage: React.FC = () => {
 
   const getPendingRequests = (): string[] => {
     try {
-      const data = localStorage.getItem(PENDING_REQUESTS_KEY);
+      const currentUser = localStorage.getItem("userName");
+      if (!currentUser) return [];
+      const data = localStorage.getItem(`${PENDING_REQUESTS_KEY}_${currentUser}`);
       return data ? JSON.parse(data) : [];
     } catch {
       return [];
+    }
+  };
+  const setPendingRequests = (usernames: string[]) => {
+    const currentUser = localStorage.getItem("userName");
+    if (currentUser) {
+      localStorage.setItem(`${PENDING_REQUESTS_KEY}_${currentUser}`, JSON.stringify(usernames));
     }
   };
   const cleanPendingList = (users: Friend[]) => {
@@ -243,7 +252,7 @@ const SearchUserPage: React.FC = () => {
       .map(user => user.userName);
   
     // 只保留这些还在申请中的用户
-    localStorage.setItem(PENDING_REQUESTS_KEY, JSON.stringify(stillPending));
+    setPendingRequests(stillPending);
   };
   const renderPopoverContent = () => {
     if (infoLoading) return <Spin />;
