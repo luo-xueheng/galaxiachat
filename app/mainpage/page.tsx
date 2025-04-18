@@ -116,6 +116,7 @@ const Page = () => {
         headers: { Authorization: `${token}` },
       });
       const data = await res.json();
+      console.log("获取好友列表", data);
       if (data.code === 0) {
         setGroups(data.data.groups || []);
         setUncategorized(data.data.uncategorized || []);
@@ -226,27 +227,41 @@ const Page = () => {
     }
   };
 
-  const handleDelete = async (friendName: string) => {
+  const handleDelete = async (userNameToDelete: string, groupId?: string) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/user/friends`, {
+      const response = await fetch(`${BACKEND_URL}/api/user/delete`, {
         method: "DELETE",
         headers: {
           Authorization: `${token}`,
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userName: friendName }),
+        body: JSON.stringify({ userName: userNameToDelete }),
       });
-      const data = await res.json();
+      const data = await response.json();
+      console.log("删除好友返回：",data)
       if (data.code === 0) {
-        message.success("删除成功");
-        fetchFriends();
+        message.success(`已删除好友 ${userNameToDelete}`);
+        // 本地移除该好友
+        if (groupId) {
+          // 从某个分组中移除
+          setGroups(prev =>
+            prev.map(g => g.id === groupId
+              ? { ...g, users: g.users.filter(u => u.userName !== userNameToDelete) }
+              : g
+            )
+          );
+        } else {
+          // 从未分组列表中移除
+          setUncategorized(prev => prev.filter(u => u.userName !== userNameToDelete));
+        }
       } else {
         message.error("删除失败：" + data.message);
       }
     } catch (err) {
-      message.error("请求失败");
+      console.error("删除好友失败", err);
+      message.error("删除请求失败");
     }
   };
+
 
   const moveToGroup = async (friendName: string, group: string) => {
     try {
@@ -282,7 +297,7 @@ const Page = () => {
   };
 
   // 渲染好友列表时，提供分组选择功能
-const renderFriendList = (friends: Friend[], showGroupOptions = false) => (
+const renderFriendList = (friends: Friend[], showGroupOptions = false,groupId?: string) => (
   <List
     itemLayout="horizontal"
     dataSource={friends}
@@ -326,7 +341,7 @@ const renderFriendList = (friends: Friend[], showGroupOptions = false) => (
           ),
           <Popconfirm
             title="确认删除该好友？"
-            onConfirm={() => handleDelete(friend.userName)}
+            onConfirm={() => handleDelete(friend.userName, groupId)}
             okText="确认"
             cancelText="取消"
             key="delete"
@@ -408,7 +423,7 @@ const renderFriendList = (friends: Friend[], showGroupOptions = false) => (
         </Panel>
         {groups.map((group) => (
           <Panel header={group.name} key={group.id}>
-            {renderFriendList(group.users)}
+            {renderFriendList(group.users, false, group.id)}
           </Panel>
         ))}
       </Collapse>
