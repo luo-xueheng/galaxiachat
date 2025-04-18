@@ -92,11 +92,7 @@ const Page = () => {
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          if (
-            data.type === "friend_request" &&
-            data.sender_name &&
-            data.request_id
-          ) {
+          if (data.type === "friend_request" && data.sender_name && data.request_id) {
             setPendingRequests((prev) => [
               ...prev,
               {
@@ -139,9 +135,8 @@ const Page = () => {
         method: "GET",
       });
       const data = await res.json();
-      console.log("获取分组", data);
-      if (data.code === 0 && Array.isArray(data.data)) {
-        setAvailableGroups(data.data);
+      if (data.code === 0 && Array.isArray(data.groups)) {
+        setAvailableGroups(data.groups);  // 更新可用的分组数据
       }
     } catch (err) {
       console.error("获取分组失败", err);
@@ -180,6 +175,7 @@ const Page = () => {
       alert(FAILURE_PREFIX + error);
     }
   };
+
   const handleAccept = async (request_id: string) => {
     try {
       const socket = new WebSocket(
@@ -187,13 +183,17 @@ const Page = () => {
       );
 
       socket.onopen = () => {
-        socket.send(JSON.stringify({
-          action: "respond_request",
-          request_id:request_id,
-          response: "accept",
-        }));
+        socket.send(
+          JSON.stringify({
+            action: "respond_request",
+            request_id,
+            response: "accept",
+          })
+        );
         alert("已接受好友请求");
-        setPendingRequests((prev) => prev.filter((r) => r.request_id !== request_id));
+        setPendingRequests((prev) =>
+          prev.filter((r) => r.request_id !== request_id)
+        );
       };
     } catch (err) {
       console.error("接受失败", err);
@@ -208,13 +208,17 @@ const Page = () => {
       );
 
       socket.onopen = () => {
-        socket.send(JSON.stringify({
-          action: "respond_request",
-          request_id:request_id,
-          response:"reject",
-        }));
+        socket.send(
+          JSON.stringify({
+            action: "respond_request",
+            request_id,
+            response: "reject",
+          })
+        );
         alert("已拒绝好友请求");
-        setPendingRequests((prev) => prev.filter((r) => r.request_id !== request_id));
+        setPendingRequests((prev) =>
+          prev.filter((r) => r.request_id !== request_id)
+        );
       };
     } catch (err) {
       console.error("拒绝失败", err);
@@ -246,20 +250,27 @@ const Page = () => {
 
   const moveToGroup = async (friendName: string, group: string) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/friends/move`, {
+      const requestBody = JSON.stringify({
+        userName: friendName,
+        group: group, // 空字符串即可
+      });
+  
+      const res = await fetch(`${BACKEND_URL}/api/friends/move`, {
         method: "PUT",
         headers: {
           Authorization: `${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          userName: friendName,
-          group: [group],
-        }),
+        body: requestBody,
       });
+  
       const data = await res.json();
       if (data.code === 0) {
-        message.success(`已将 ${friendName} 移入 ${group}`);
+        if (group) {
+          message.success(`已将 ${friendName} 移入 ${group}`);
+        } else {
+          message.success(`已将 ${friendName} 移出分组`);
+        }
         fetchFriends();
       } else {
         message.error("分组失败：" + data.message);
@@ -270,46 +281,68 @@ const Page = () => {
     }
   };
 
-  const renderFriendList = (friends: Friend[]) => (
-    <List
-      itemLayout="horizontal"
-      dataSource={friends}
-      renderItem={(friend) => (
-        <List.Item
-          actions={[
+  // 渲染好友列表时，提供分组选择功能
+const renderFriendList = (friends: Friend[], showGroupOptions = false) => (
+  <List
+    itemLayout="horizontal"
+    dataSource={friends}
+    renderItem={(friend) => (
+      <List.Item
+        actions={[
+          showGroupOptions ? (
+            <div key="group-options">
+              {availableGroups.map((group) => (
+                <Button
+                  size="small"
+                  style={{ marginRight: 4, marginBottom: 4 }}
+                  key={group}
+                  onClick={() => moveToGroup(friend.userName, group)}
+                >
+                  加入 {group}
+                </Button>
+              ))}
+            </div>
+          ) : (
             <Dropdown
-              key="group"
-              overlay={
-                <Menu
-                  onClick={({ key }) => moveToGroup(friend.userName, key)}
-                  items={availableGroups.map((g) => ({
+            key="group"
+            overlay={
+              <Menu
+                onClick={({ key }) => moveToGroup(friend.userName, key)}
+                items={[
+                  ...availableGroups.map((g) => ({
                     key: g,
-                    label: g,
-                  }))}
-                />
-              }
-            >
-              <Button>移动到分组</Button>
-            </Dropdown>,
-            <Popconfirm
-              title="确认删除该好友？"
-              onConfirm={() => handleDelete(friend.userName)}
-              okText="确认"
-              cancelText="取消"
-              key="delete"
-            >
-              <Button danger>删除</Button>
-            </Popconfirm>,
-          ]}
-        >
-          <List.Item.Meta
-            avatar={<Avatar src={friend.avatar} />}
-            title={friend.userName}
-          />
-        </List.Item>
-      )}
-    />
-  );
+                    label: `移动到 ${g}`,
+                  })),
+                  {
+                    key: "", // 空字符串表示移出分组
+                    label: "移出分组",
+                  },
+                ]}
+              />
+            }
+          >
+            <Button>移动到分组</Button>
+          </Dropdown>
+          ),
+          <Popconfirm
+            title="确认删除该好友？"
+            onConfirm={() => handleDelete(friend.userName)}
+            okText="确认"
+            cancelText="取消"
+            key="delete"
+          >
+            <Button danger>删除</Button>
+          </Popconfirm>,
+        ]}
+      >
+        <List.Item.Meta
+          avatar={<Avatar src={friend.avatar} />}
+          title={friend.userName}
+        />
+      </List.Item>
+    )}
+  />
+);
 
   return (
     <Flex vertical gap="middle" style={{ padding: 24 }}>
@@ -371,7 +404,7 @@ const Page = () => {
         defaultActiveKey={["uncategorized", ...(groups?.map((g) => g.id) || [])]}
       >
         <Panel header="未分组" key="uncategorized">
-          {renderFriendList(uncategorized)}
+          {renderFriendList(uncategorized, true)}
         </Panel>
         {groups.map((group) => (
           <Panel header={group.name} key={group.id}>
