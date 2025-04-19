@@ -92,6 +92,7 @@ const Page = () => {
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
+          console.log(data)
           if (data.type === "friend_request" && data.sender_name && data.request_id) {
             setPendingRequests((prev) => {
               if (prev.some((r) => r.request_id === data.request_id)) {
@@ -178,56 +179,18 @@ const Page = () => {
       alert(FAILURE_PREFIX + error);
     }
   };
-
-  const handleAccept = async (request_id: string) => {
-    try {
-      const socket = new WebSocket(
-        `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token!)}`
-      );
-
-      socket.onopen = () => {
-        socket.send(
-          JSON.stringify({
-            action: "respond_request",
-            request_id,
-            response: "accept",
-          })
-        );
-        alert("已接受好友请求");
-        setPendingRequests((prev) =>
-          prev.filter((r) => r.request_id !== request_id)
-        );
-      };
-    } catch (err) {
-      console.error("接受失败", err);
-      message.error("操作失败");
+  const sendFriendResponse = (request_id: string, response: "accept" | "reject") => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: "respond_request", request_id, response }));
+      const actionMsg = response === "accept" ? "已接受好友请求" : "已拒绝好友请求";
+      alert(actionMsg);
+      setPendingRequests(prev => prev.filter(r => r.request_id !== request_id));
+    } else {
+      message.error("WebSocket 未连接，无法操作");
     }
   };
-
-  const handleReject = async (request_id: string) => {
-    try {
-      const socket = new WebSocket(
-        `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token!)}`
-      );
-
-      socket.onopen = () => {
-        socket.send(
-          JSON.stringify({
-            action: "respond_request",
-            request_id,
-            response: "reject",
-          })
-        );
-        alert("已拒绝好友请求");
-        setPendingRequests((prev) =>
-          prev.filter((r) => r.request_id !== request_id)
-        );
-      };
-    } catch (err) {
-      console.error("拒绝失败", err);
-      message.error("操作失败");
-    }
-  };
+  const handleAccept = (request_id: string) => sendFriendResponse(request_id, "accept");
+  const handleReject = (request_id: string) => sendFriendResponse(request_id, "reject");
 
   const handleDelete = async (userNameToDelete: string, groupId?: string) => {
     try {
@@ -363,6 +326,7 @@ const renderFriendList = (friends: Friend[], showGroupOptions = false,groupId?: 
 
   return (
     <Flex vertical gap="middle" style={{ padding: 24 }}>
+      <Title level={4}>欢迎，{userName} 👋</Title>
       <Flex gap="small">
         <Button type="primary" onClick={logout}>
           logout

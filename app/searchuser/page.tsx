@@ -8,6 +8,7 @@ import { setName, setToken } from "../redux/auth";
 import type { GetProps } from 'antd';
 import { RootState } from "../redux/store";
 import { BACKEND_URL } from "../constants/string";
+import { current } from '@reduxjs/toolkit';
 
 type SearchProps = GetProps<typeof Input.Search>;
 
@@ -24,6 +25,10 @@ type UserInfo = {
   email?: string;
   phone?: string;
   createdAt?: string;
+};
+type PendingRequest = {
+  userName: string;
+  request_id: string;
 };
 
 let ws: WebSocket | null = null;
@@ -63,7 +68,7 @@ const SearchUserPage: React.FC = () => {
   const [selectedUserInfo, setSelectedUserInfo] = useState<UserInfo | null>(null);
   const [openPopoverUser, setOpenPopoverUser] = useState<string | null>(null);
   const [infoLoading, setInfoLoading] = useState(false);
-
+  const router = useRouter();
   const userName = useSelector((state: RootState) => state.auth.name);
   const token = useSelector((state: RootState) => state.auth.token);
   const dispatch = useDispatch();
@@ -79,39 +84,62 @@ const SearchUserPage: React.FC = () => {
 
   useEffect(() => {
     let socket: WebSocket | null = null;
-
+  
     const initWebSocket = async () => {
       try {
-        console.log("获取申请结果")
+        console.log("获取申请结果");
         socket = await connectWebSocket();
         socket.onmessage = (event) => {
-          console.log(event.data)
+          console.log(event.data);
           const data = JSON.parse(event.data);
           console.log("📨 收到 WebSocket 消息：", data);
-
-          if (data.action === "respond_request") {
-            const { from_user, result } = data;
-
-            if (result === "accepted") {
-              message.success(`${from_user} 接受了你的好友请求`);
-              setResults(prev =>
-                prev.map(user =>
-                  user.userName === from_user
-                    ? { ...user, is_friend: true, is_requested: false }
-                    : user
-                )
-              );
-            } else if (result === "rejected") {
-              message.warning(`${from_user} 拒绝了你的好友请求`);
-              const updatedPending = getPendingRequests().filter(u => u !== from_user);
+  
+          if (data.type === "friend_request_response") {
+            const { receiver_name, status } = data;
+  
+            if (status === "accepted") {
+              alert(`${receiver_name} 接受了你的好友请求`);
+              // 从 pendingFriendRequests 中移除对方的用户名
+              const updatedPending = getPendingRequests().filter(p => p.userName !== receiver_name);
               setPendingRequests(updatedPending);
               setResults(prev =>
                 prev.map(user =>
-                  user.userName === from_user
-                    ? { ...user, is_requested: false }
+                  user.userName === receiver_name
+                    ? { ...user, is_friend: true, is_requested: false }
+                    : user
+                )
+                
+              );
+              const currentUser = localStorage.getItem("userName");
+              // 构造待删除的 localStorage 键
+              const pendingRequestKey = `${PENDING_REQUESTS_KEY}_${currentUser}_${receiver_name}`;
+
+              // 删除该项
+              localStorage.removeItem(pendingRequestKey);
+
+              // 输出日志以确认删除
+              console.log("Removed pending request for", receiver_name, "with key", pendingRequestKey);
+            } else if (status === "rejected") {
+              alert(`${receiver_name} 拒绝了你的好友请求`);
+              // 从 pendingFriendRequests 中移除对方的用户名
+              const updatedPending = getPendingRequests().filter(p => p.userName !== receiver_name);
+              setPendingRequests(updatedPending);
+              setResults(prev =>
+                prev.map(user =>
+                  user.userName === receiver_name
+                    ? { ...user, is_friend: false, is_requested: false }
                     : user
                 )
               );
+              const currentUser = localStorage.getItem("userName");
+              // 构造待删除的 localStorage 键
+              const pendingRequestKey = `${PENDING_REQUESTS_KEY}_${currentUser}_${receiver_name}`;
+
+              // 删除该项
+              localStorage.removeItem(pendingRequestKey);
+
+              // 输出日志以确认删除
+              console.log("Removed pending request for", receiver_name, "with key", pendingRequestKey);
             }
           }
         };
@@ -119,15 +147,16 @@ const SearchUserPage: React.FC = () => {
         console.error("WebSocket 初始化失败", err);
       }
     };
-
+  
     initWebSocket();
-
+  
     return () => {
       if (socket) {
         socket.close();
       }
     };
   }, []);
+  
 
   const onSearch: SearchProps['onSearch'] = async (value) => {
     if (!value) return;
@@ -149,11 +178,12 @@ const SearchUserPage: React.FC = () => {
       if (data.users && Array.isArray(data.users)) {
         const merged = data.users.map((user: Friend) => ({
           ...user,
-          is_requested: !user.is_friend && pendingList.includes(user.userName),
+          is_requested: !user.is_friend && pendingList.some(p => p.userName === user.userName),
         }));
         cleanPendingList(data.users); // ✅ 清理本地缓存
         setResults(merged);
-      } else {
+      } 
+      else {
         message.warning('没有搜索结果');
         setResults([]);
       }
@@ -203,15 +233,24 @@ const SearchUserPage: React.FC = () => {
       socket.onmessage = (event) => {
         try {
           const response = JSON.parse(event.data);
+          console.log("发申请：",event.data );
           if (response.status === "success") {
             alert(`好友请求已成功发送给 ${item.userName}`);
-
-            const newPendingList = [...getPendingRequests(), item.userName];
+          
+            const request_id = response.request_id; // 从后端响应中获取
+          
+            const newPendingList = [
+              ...getPendingRequests(),
+              { userName: item.userName, request_id },
+            ];
             setPendingRequests(newPendingList);
-            setResults(prev => prev.map(user =>
-              user.userName === item.userName ? { ...user, is_requested: true } : user
-            ));
-          } 
+          
+            setResults(prev =>
+              prev.map(user =>
+                user.userName === item.userName ? { ...user, is_requested: true } : user
+              )
+            );
+          }
           //这里总在莫名触发
           // else {
           //   alert(`发送好友请求失败: ${response.message || '未知错误'}`);
@@ -227,29 +266,30 @@ const SearchUserPage: React.FC = () => {
     }
   };
 
-  const getPendingRequests = (): string[] => {
+  const getPendingRequests = (): PendingRequest[] => {
     try {
       const currentUser = localStorage.getItem("userName");
       if (!currentUser) return [];
       const data = localStorage.getItem(`${PENDING_REQUESTS_KEY}_${currentUser}`);
+      console.log("pendingList", data);
       return data ? JSON.parse(data) : [];
     } catch {
       return [];
     }
   };
-  const setPendingRequests = (usernames: string[]) => {
+  const setPendingRequests = (requests: PendingRequest[]) => {
     const currentUser = localStorage.getItem("userName");
     if (currentUser) {
-      localStorage.setItem(`${PENDING_REQUESTS_KEY}_${currentUser}`, JSON.stringify(usernames));
+      localStorage.setItem(`${PENDING_REQUESTS_KEY}_${currentUser}`, JSON.stringify(requests));
     }
   };
   const cleanPendingList = (users: Friend[]) => {
-    const pending = getPendingRequests();
+    const pending = getPendingRequests(); // PendingRequest[]
   
     // 找出依然是“未加为好友”但在 pending 列表里的用户
-    const stillPending = users
-      .filter(user => !user.is_friend && pending.includes(user.userName))
-      .map(user => user.userName);
+    const stillPending = pending.filter(p =>
+      users.some(user => user.userName === p.userName && !user.is_friend)
+    );
   
     // 只保留这些还在申请中的用户
     setPendingRequests(stillPending);
@@ -270,6 +310,12 @@ const SearchUserPage: React.FC = () => {
 
   return (
     <Space direction="vertical" style={{ width: '100%', padding: '24px' }}>
+      <div style={{ fontWeight: 'bold', fontSize: '16px' }}>
+    👤 当前用户：{userName}
+      </div>
+      <Button type="link" onClick={() => router.push('/mainpage')}>
+    ← 返回主页
+  </Button>
       <Search
         placeholder="搜索用户名"
         onSearch={onSearch}
