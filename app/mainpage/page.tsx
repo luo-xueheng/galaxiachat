@@ -92,7 +92,7 @@ const Page = () => {
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          console.log(data)
+          //console.log(data)
           if (data.type === "friend_request" && data.sender_name && data.request_id) {
             setPendingRequests((prev) => {
               if (prev.some((r) => r.request_id === data.request_id)) {
