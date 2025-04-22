@@ -77,34 +77,32 @@ const SearchUserPage: React.FC = () => {
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUserName = localStorage.getItem("userName");
-    if (storedToken) dispatch(setToken(storedToken));
-    if (storedUserName) dispatch(setName(storedUserName));
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (!authReady){
-      console.error("❌ 用户未登录，无法建立 WebSocket 连接");
+  
+    if (!storedToken || !storedUserName) {
+      router.push('/login'); // ✅ 如果没登录，立刻跳转
       return;
     }
-
+  
+    dispatch(setToken(storedToken));
+    dispatch(setName(storedUserName));
+  
     let socket: WebSocket | null = null;
-
+  
     const initWebSocket = async () => {
       try {
         console.log("🔌 初始化 WebSocket 连接");
         socket = await connectWebSocket();
-
+  
         socket.onmessage = (event) => {
           const data = JSON.parse(event.data);
           console.log("📨 收到 WebSocket 消息：", data);
-          
+  
           if (data.type === "friend_request_response") {
-            console.log("获取申请结果：", data);
             const { receiver_name, status } = data;
-
+  
             const updatedPending = getPendingRequests().filter(p => p.userName !== receiver_name);
             setPendingRequests(updatedPending);
-
+  
             setResults(prev =>
               prev.map(user =>
                 user.userName === receiver_name
@@ -112,31 +110,27 @@ const SearchUserPage: React.FC = () => {
                   : user
               )
             );
-
+  
             const currentUser = localStorage.getItem("userName");
             const pendingRequestKey = `${PENDING_REQUESTS_KEY}_${currentUser}_${receiver_name}`;
             localStorage.removeItem(pendingRequestKey);
-
-            if (status === "accepted") {
-              alert(`${receiver_name} 接受了你的好友请求`);
-            } else if (status === "rejected") {
-              alert(`${receiver_name} 拒绝了你的好友请求`);
-            }
+  
+            alert(`${receiver_name} ${status === "accepted" ? '接受' : '拒绝'}了你的好友请求`);
           }
         };
       } catch (err) {
         console.error("WebSocket 初始化失败", err);
       }
     };
-
+  
     initWebSocket();
-
+  
     return () => {
       if (socket) {
         socket.close();
       }
     };
-  }, [authReady]);
+  }, [dispatch, router]);
 
   const onSearch: SearchProps['onSearch'] = async (value) => {
     if (!value) return;

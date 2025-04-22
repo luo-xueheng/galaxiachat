@@ -59,13 +59,54 @@ const Page = () => {
   const [availableGroups, setAvailableGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const fetchFriends = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${BACKEND_URL}/api/user/friends`, {
+        headers: { Authorization: `${token}` },
+      });
+      const data = await res.json();
+      console.log("获取好友列表", data);
+      if (data.code === 0) {
+        setGroups(data.data.groups || []);
+        setUncategorized(data.data.uncategorized || []);
+      } else {
+        message.error("获取好友列表失败：" + data.message);
+      }
+    } catch (err) {
+      message.error("请求好友列表失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchGroupTypes = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/friends/groups`, {
+        method: "GET",
+      });
+      const data = await res.json();
+      if (data.code === 0 && Array.isArray(data.groups)) {
+        setAvailableGroups(data.groups);  // 更新可用的分组数据
+      }
+    } catch (err) {
+      console.error("获取分组失败", err);
+    }
+  };
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUserName = localStorage.getItem("userName");
-
+    if (!storedToken || !storedUserName) {
+      alert("请先登录");
+      router.push("/login");
+      return;
+    }
     if (storedToken) dispatch(setToken(storedToken));
     if (storedUserName) dispatch(setName(storedUserName));
-
+    if(storedToken){
+      fetchFriends();
+      fetchGroupTypes();
+    }
     const connectWebSocket = async (): Promise<WebSocket> => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Token 不存在，无法建立 WebSocket 连接");
@@ -111,48 +152,6 @@ const Page = () => {
 
     connectWebSocket();
   }, [dispatch]);
-
-  const fetchFriends = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${BACKEND_URL}/api/user/friends`, {
-        headers: { Authorization: `${token}` },
-      });
-      const data = await res.json();
-      console.log("获取好友列表", data);
-      if (data.code === 0) {
-        setGroups(data.data.groups || []);
-        setUncategorized(data.data.uncategorized || []);
-      } else {
-        message.error("获取好友列表失败：" + data.message);
-      }
-    } catch (err) {
-      message.error("请求好友列表失败");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchGroupTypes = async () => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/friends/groups`, {
-        method: "GET",
-      });
-      const data = await res.json();
-      if (data.code === 0 && Array.isArray(data.groups)) {
-        setAvailableGroups(data.groups);  // 更新可用的分组数据
-      }
-    } catch (err) {
-      console.error("获取分组失败", err);
-    }
-  };
-
-  useEffect(() => {
-    if (token) {
-      fetchFriends();
-      fetchGroupTypes();
-    }
-  }, [token]);
 
   const logout = async () => {
     try {
