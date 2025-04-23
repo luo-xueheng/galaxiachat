@@ -11,6 +11,7 @@ import {
   Popconfirm,
   Dropdown,
   Menu,
+  Select,
 } from "antd";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
@@ -49,7 +50,6 @@ let ws: WebSocket | null = null;
 
 const Page = () => {
   const userName = useSelector((state: RootState) => state.auth.name);
-  const token = useSelector((state: RootState) => state.auth.token);
   const router = useRouter();
   const dispatch = useDispatch();
 
@@ -58,8 +58,13 @@ const Page = () => {
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [availableGroups, setAvailableGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [groupError, setGroupError] = useState<string | null>(null);
+  const [groupToDelete, setGroupToDelete] = useState("");
 
   const fetchFriends = async () => {
+    const token = localStorage.getItem("token");
     try {
       setLoading(true);
       const res = await fetch(`${BACKEND_URL}/api/user/friends`, {
@@ -81,9 +86,11 @@ const Page = () => {
   };
 
   const fetchGroupTypes = async () => {
+    const token = localStorage.getItem("token");
     try {
       const res = await fetch(`${BACKEND_URL}/api/friends/groups`, {
         method: "GET",
+        headers: { Authorization: `${token}` },
       });
       const data = await res.json();
       if (data.code === 0 && Array.isArray(data.groups)) {
@@ -91,6 +98,70 @@ const Page = () => {
       }
     } catch (err) {
       console.error("获取分组失败", err);
+    }
+  };
+  const addGroup = async () => {
+    const token = localStorage.getItem("token");
+    if (!newGroupName.trim()) {
+      message.warning("请输入分组名称");
+      return;
+    }
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/friends/create-groups`, {
+        method: "POST",
+        headers: {
+          Authorization: `${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ group_name: newGroupName }),
+      });
+      const data = await res.json();
+      if (data.code === 0) {
+        message.success(`添加分组 ${newGroupName} 成功`);
+        setNewGroupName("");
+        fetchGroupTypes();
+        fetchFriends();
+      }
+      else if (data.code === 2 && data.info === "Group name already exists") {
+        setGroupError(`分组 "${newGroupName}" 已存在`);
+      }
+      else {
+        message.error("添加失败：" + data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      message.error("网络请求失败");
+    }
+  };
+  // 删除分组
+  const deleteGroup = async () => {
+    const token = localStorage.getItem("token");
+    if (!selectedGroupId) {
+      message.warning("请选择一个分组");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/friends/delete-groups`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({ group_name: selectedGroupId }),
+      });
+      const data = await res.json();
+
+      if (data.code === 0) {
+        message.success("删除成功");
+        // 更新分组列表
+        fetchGroupTypes();
+        setSelectedGroupId(null);
+      } else {
+        message.error(data.message || "删除失败");
+      }
+    } catch (err) {
+      console.error("删除失败", err);
+      message.error("删除失败");
     }
   };
   useEffect(() => {
@@ -103,7 +174,7 @@ const Page = () => {
     }
     if (storedToken) dispatch(setToken(storedToken));
     if (storedUserName) dispatch(setName(storedUserName));
-    if(storedToken){
+    if (storedToken) {
       fetchFriends();
       fetchGroupTypes();
     }
@@ -154,6 +225,7 @@ const Page = () => {
   }, [dispatch]);
 
   const logout = async () => {
+    const token = localStorage.getItem("token");
     try {
       const response = await fetch(`${BACKEND_URL}/api/logout`, {
         method: "POST",
@@ -192,6 +264,7 @@ const Page = () => {
   const handleReject = (request_id: string) => sendFriendResponse(request_id, "reject");
 
   const handleDelete = async (userNameToDelete: string, groupId?: string) => {
+    const token = localStorage.getItem("token");
     try {
       const response = await fetch(`${BACKEND_URL}/api/user/delete`, {
         method: "DELETE",
@@ -201,7 +274,7 @@ const Page = () => {
         body: JSON.stringify({ userName: userNameToDelete }),
       });
       const data = await response.json();
-      console.log("删除好友返回：",data)
+      console.log("删除好友返回：", data)
       if (data.code === 0) {
         message.success(`已删除好友 ${userNameToDelete}`);
         // 本地移除该好友
@@ -228,12 +301,13 @@ const Page = () => {
 
 
   const moveToGroup = async (friendName: string, group: string) => {
+    const token = localStorage.getItem("token");
     try {
       const requestBody = JSON.stringify({
         userName: friendName,
         group: group, // 空字符串即可
       });
-  
+
       const res = await fetch(`${BACKEND_URL}/api/friends/move`, {
         method: "PUT",
         headers: {
@@ -242,7 +316,7 @@ const Page = () => {
         },
         body: requestBody,
       });
-  
+
       const data = await res.json();
       if (data.code === 0) {
         if (group) {
@@ -261,67 +335,67 @@ const Page = () => {
   };
 
   // 渲染好友列表时，提供分组选择功能
-const renderFriendList = (friends: Friend[], showGroupOptions = false,groupId?: string) => (
-  <List
-    itemLayout="horizontal"
-    dataSource={friends}
-    renderItem={(friend) => (
-      <List.Item
-        actions={[
-          showGroupOptions ? (
-            <div key="group-options">
-              {availableGroups.map((group) => (
-                <Button
-                  size="small"
-                  style={{ marginRight: 4, marginBottom: 4 }}
-                  key={group}
-                  onClick={() => moveToGroup(friend.userName, group)}
-                >
-                  加入 {group}
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <Dropdown
-            key="group"
-            overlay={
-              <Menu
-                onClick={({ key }) => moveToGroup(friend.userName, key)}
-                items={[
-                  ...availableGroups.map((g) => ({
-                    key: g,
-                    label: `移动到 ${g}`,
-                  })),
-                  {
-                    key: "", // 空字符串表示移出分组
-                    label: "移出分组",
-                  },
-                ]}
-              />
-            }
-          >
-            <Button>移动到分组</Button>
-          </Dropdown>
-          ),
-          <Popconfirm
-            title="确认删除该好友？"
-            onConfirm={() => handleDelete(friend.userName, groupId)}
-            okText="确认"
-            cancelText="取消"
-            key="delete"
-          >
-            <Button danger>删除</Button>
-          </Popconfirm>,
-        ]}
-      >
-        <List.Item.Meta
-          avatar={<Avatar src={friend.avatar} />}
-          title={friend.userName}
-        />
-      </List.Item>
-    )}
-  />
-);
+  const renderFriendList = (friends: Friend[], showGroupOptions = false, groupId?: string) => (
+    <List
+      itemLayout="horizontal"
+      dataSource={friends}
+      renderItem={(friend) => (
+        <List.Item
+          actions={[
+            showGroupOptions ? (
+              <div key="group-options">
+                {availableGroups.map((group) => (
+                  <Button
+                    size="small"
+                    style={{ marginRight: 4, marginBottom: 4 }}
+                    key={group}
+                    onClick={() => moveToGroup(friend.userName, group)}
+                  >
+                    加入 {group}
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <Dropdown
+                key="group"
+                overlay={
+                  <Menu
+                    onClick={({ key }) => moveToGroup(friend.userName, key)}
+                    items={[
+                      ...availableGroups.map((g) => ({
+                        key: g,
+                        label: `移动到 ${g}`,
+                      })),
+                      {
+                        key: "", // 空字符串表示移出分组
+                        label: "移出分组",
+                      },
+                    ]}
+                  />
+                }
+              >
+                <Button>移动到分组</Button>
+              </Dropdown>
+            ),
+            <Popconfirm
+              title="确认删除该好友？"
+              onConfirm={() => handleDelete(friend.userName, groupId)}
+              okText="确认"
+              cancelText="取消"
+              key="delete"
+            >
+              <Button danger>删除</Button>
+            </Popconfirm>,
+          ]}
+        >
+          <List.Item.Meta
+            avatar={<Avatar src={friend.avatar} />}
+            title={friend.userName}
+          />
+        </List.Item>
+      )}
+    />
+  );
 
   return (
     <Flex vertical gap="middle" style={{ padding: 24 }}>
@@ -332,6 +406,41 @@ const renderFriendList = (friends: Friend[], showGroupOptions = false,groupId?: 
         </Button>
         <Button onClick={() => router.push("/signout")}>signout</Button>
         <Button onClick={() => router.push("/searchuser")}>searchuser</Button>
+      </Flex>
+      <Flex gap="middle" style={{ marginTop: 16 }}>
+        <div>
+          <input
+            type="text"
+            placeholder="新分组名"
+            value={newGroupName}
+            onChange={(e) => {
+              setNewGroupName(e.target.value)
+              setGroupError(null); // 清除错误信息
+            }}
+          />
+          <Button type="primary" onClick={addGroup} style={{ marginLeft: 8 }}>
+            添加分组
+          </Button>
+          {groupError && (
+            <div style={{ color: "red", marginTop: 4 }}>{groupError}</div>
+          )}
+        </div>
+        <div>
+
+          <Select
+            placeholder="选择要删除的分组"
+            style={{ width: 200 }}
+            value={selectedGroupId}
+            onChange={(value) => setSelectedGroupId(value)}
+            options={availableGroups.map((group) => ({
+              label: group,
+              value: group,
+            }))}
+          />
+          <Button danger onClick={deleteGroup} style={{ marginLeft: 8 }}>
+            删除分组
+          </Button>
+        </div>
       </Flex>
 
       {pendingRequests.length > 0 && (
