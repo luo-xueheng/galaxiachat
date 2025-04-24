@@ -215,7 +215,15 @@ const Page = () => {
                 sender_name: data.sender_name,
                 request_type: data.request_type,
               }];
+
             });
+            // 👇 WebSocket 收到后立即响应（例如发送一个 acknowledge）
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                action: "acknowledge",
+                request_id: data.request_id,
+              }));
+            }
           }
         };
       });
