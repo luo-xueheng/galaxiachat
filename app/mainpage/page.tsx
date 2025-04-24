@@ -217,13 +217,6 @@ const Page = () => {
               }];
 
             });
-            // // 👇 WebSocket 收到后立即响应（例如发送一个 acknowledge）
-            // if (ws && ws.readyState === WebSocket.OPEN) {
-            //   ws.send(JSON.stringify({
-            //     action: "acknowledge",
-            //     request_id: data.request_id,
-            //   }));
-            // }
           }
         };
       });
@@ -264,6 +257,15 @@ const Page = () => {
       const actionMsg = response === "accept" ? "已接受好友请求" : "已拒绝好友请求";
       alert(actionMsg);
       setPendingRequests(prev => prev.filter(r => r.request_id !== request_id));
+      //向WebSocket 发送显示已读
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          action: "acknowledge",
+          request_id: request_id,
+        }));
+      }
+      //自动更新好友列表
+      fetchFriends();
     } else {
       message.error("WebSocket 未连接，无法操作");
     }
