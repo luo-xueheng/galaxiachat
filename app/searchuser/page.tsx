@@ -118,7 +118,7 @@ const SearchUserPage: React.FC = () => {
             alert(`${receiver_name} ${status === "accepted" ? '接受' : '拒绝'}了你的好友请求`);
           }
           // 👇 WebSocket 收到后立即响应（例如发送一个 acknowledge）
-          if (ws && ws.readyState === WebSocket.OPEN) {
+          if (ws && ws.readyState === WebSocket.OPEN && data.type === "friend_request_response") {
             ws.send(JSON.stringify({
               action: "acknowledge",
               request_id: data.request_id,
