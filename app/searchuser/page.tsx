@@ -203,16 +203,17 @@ const SearchUserPage: React.FC = () => {
 
   const addFriend = async (item: Friend) => {
     try {
-      const socket = await connectWebSocket();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          action: "send_request",
+          userName: item.userName,
+          request_type: "direct",
+        }));
+      } else {
+        console.warn("⚠️ WebSocket 尚未连接");
+      }
 
-      const request = {
-        action: "send_request",
-        userName: item.userName,
-        request_type: "direct",
-      };
-      socket.send(JSON.stringify(request));
-
-      socket.onmessage = (event) => {
+      ws.onmessage = (event) => {
         try {
           const response = JSON.parse(event.data);
           //console.log("📤 发送申请响应：", event.data);
