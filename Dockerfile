@@ -23,9 +23,9 @@ WORKDIR /app
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /public/images/ ./
-COPY --from=builder /public/logosmall.ico ./favicon.ico
-COPY --from=builder /public/logosmall.ico ./logosmall.ico
+COPY --from=builder /app/public/images/ ./
+COPY --from=builder /app/public/logosmall.ico ./favicon.ico
+COPY --from=builder /app/public/logosmall.ico ./logosmall.ico
 
 CMD ["node", "server.js"]
 # TODO End
