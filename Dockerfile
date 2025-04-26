@@ -35,10 +35,10 @@ RUN pwd
 RUN ls -alh ./
 RUN ls -alh ./.next 
 RUN ls -alh ./.next/static
+RUN ls -alh ./.next/static/images
 RUN ls -alh ./.next/static/chunks
 RUN ls -alh ./.next/static/media
 RUN ls -alh ./.next/static/css
-RUN ls -alh ./images
 
 CMD ["node", "server.js"]
 # TODO End
