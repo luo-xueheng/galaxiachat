@@ -21,18 +21,18 @@ const Home = () => (
   }}>
     {/* 上面部分：图标和欢迎语 */}
     <div style={{
-      display: 'flex', 
+      display: 'flex',
       alignItems: 'center',  // 垂直居中图标和文本
       flexDirection: 'column', // 垂直排列
       textAlign: 'center',    // 使文本居中
       height: '50vh', width: '100%',
       marginTop: 150,
     }}>
-      <img src="/images/logo_tmp.png" alt="Logo" style={{ width: 150, height: 150, marginBottom: 10 }} /> {/* 图标 */}
+      <img src="/_next/static/images/logo_tmp.png" alt="Logo" style={{ width: 150, height: 150, marginBottom: 10 }} /> {/* 图标 */}
       <div style={{ fontSize: '48px', fontWeight: 'bold' }}>
         Welcome to Galaxia Chat!
       </div>
-      <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'gray'}}>
+      <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'gray' }}>
         Your Universe of Infinite Conversations.
       </div>
     </div>
