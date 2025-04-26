@@ -23,7 +23,7 @@ WORKDIR /app
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/images ./images
+COPY --from=builder /app/images/logo_tmp.png ./images/logo_tmp.png
 COPY --from=builder /app/images/logosmall.ico ./favicon.ico
 COPY --from=builder /app/images/logosmall.ico ./logosmall.ico
 
