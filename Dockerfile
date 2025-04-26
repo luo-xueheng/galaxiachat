@@ -34,6 +34,8 @@ COPY /app/images/logosmall.ico ./logosmall.ico
 
 RUN pwd
 RUN ls -alh ./
+RUN ls -alh ./.next 
+RUN ls -alh ./.next/static
 RUN ls -alh ./images
 
 CMD ["node", "server.js"]
