@@ -22,23 +22,24 @@ ENV PORT=80
 WORKDIR /app
 
 RUN pwd
-RUN ls -alh .
+RUN ls -al .
+RUN ls -al ./favicon.ico 
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY /app/images/logo_tmp.png ./.next/static/images/logo_tmp.png
-COPY /app/images/logosmall.ico ./.next/static/favicon.ico
 COPY /app/images/logosmall.ico ./.next/static/logosmall.ico
+COPY /app/images/logosmall.ico ./.next/static/favicon.ico
 COPY /app/images/logosmall.ico ./favicon.ico
 
 RUN pwd
-RUN ls -alh ./
-RUN ls -alh ./.next 
-RUN ls -alh ./.next/static
-RUN ls -alh ./.next/static/images
-RUN ls -alh ./.next/static/chunks
-RUN ls -alh ./.next/static/media
-RUN ls -alh ./.next/static/css
+RUN ls -al ./
+RUN ls -al ./.next 
+RUN ls -al ./.next/static
+RUN ls -al ./.next/static/images
+RUN ls -al ./.next/static/chunks
+RUN ls -al ./.next/static/media
+RUN ls -al ./.next/static/css
 
 CMD ["node", "server.js"]
 # TODO End
