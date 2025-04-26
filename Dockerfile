@@ -4,6 +4,9 @@ FROM docker.net9.org/library/node:22 AS builder
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
+COPY /public/images/logo_tmp.png ./images/logo_tmp.png
+COPY /public/logosmall.ico ./favicon.ico
+COPY /public/logosmall.ico ./logosmall.ico
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -23,9 +26,9 @@ WORKDIR /app
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/images/logo_tmp.png ./images/logo_tmp.png
-COPY --from=builder /app/images/logosmall.ico ./favicon.ico
-COPY --from=builder /app/images/logosmall.ico ./logosmall.ico
+#COPY /app/images/logo_tmp.png ./images/logo_tmp.png
+#COPY /app/images/logosmall.ico ./favicon.ico
+#COPY /app/images/logosmall.ico ./logosmall.ico
 
 CMD ["node", "server.js"]
 # TODO End
