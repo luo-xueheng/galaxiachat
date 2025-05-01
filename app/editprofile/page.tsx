@@ -257,6 +257,48 @@ const EditProfilePage = () => {
             alert(error.message || '邮箱修改失败，请检查密码是否正确');
         }
     };
+    const handlePhoneChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const oldPassword = (document.getElementById('phone-oldPassword') as HTMLInputElement).value;
+        const newPhone = (document.getElementById('newPhone') as HTMLInputElement).value;
+
+        // 前端基础验证
+        if (!oldPassword || !newPhone) {
+            alert('请填写所有必填字段');
+            return;
+        }
+
+        if (!/^[0-9]{11}$/.test(newPhone)) {
+            alert('请输入11位有效手机号');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('userName', username || '');
+        formData.append('password', oldPassword); // 旧密码验证
+        formData.append('newPhone', newPhone);
+
+        try {
+            const response = await fetch('/api/edit_profile/', {
+                method: 'POST',
+                headers: {
+                    Authorization: `${token}`,
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || '手机号修改失败');
+            }
+
+            alert('手机号修改成功！');
+        } catch (error) {
+            console.error('手机号修改错误:', error);
+            alert(error.message || '手机号修改失败，请检查密码是否正确');
+        }
+    };
 
 
     return (
@@ -350,6 +392,31 @@ const EditProfilePage = () => {
                 </form>
             </div>
 
+            {/* 修改电话 */}
+            <div className="phone-change-form">
+                <h3>修改手机号</h3>
+                <form onSubmit={handlePhoneChange}>
+                    <div>
+                        <label>当前密码</label>
+                        <Input.Password
+                            id="phone-oldPassword"
+                            placeholder="请输入当前密码验证"
+                        />
+                    </div>
+                    <div>
+                        <label>新手机号</label>
+                        <Input
+                            id="newPhone"
+                            type="tel"
+                            placeholder="13800138000"
+                            maxLength={11}
+                        />
+                    </div>
+                    <Button type="primary" htmlType="submit">
+                        确认修改
+                    </Button>
+                </form>
+            </div>
 
         </div>
     );
