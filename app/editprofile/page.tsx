@@ -1,7 +1,7 @@
 'use client';
 
 import { ProForm, ProFormItem } from '@ant-design/pro-components';
-import { Input, Flex, Upload, Avatar, message } from 'antd';
+import { Input, Flex, Upload, Avatar, message, Button } from 'antd';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -78,7 +78,7 @@ const EditProfilePage = () => {
         }
         return isJpgOrPng && isLt10M;
     };
-    
+
     // 上传头像
     const handleUpload = async (option: any) => {
         const file = option.file as File
@@ -128,6 +128,136 @@ const EditProfilePage = () => {
         }
     };
 
+    const handleUsernameChange = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        const newName = e.currentTarget.value;
+        console.log('New Name:', newName); // 打印新昵称，检查是否正确
+
+        const formData = new FormData();
+        formData.append('newUserName', newName); // 使用 newUserName 字段上传文件
+        formData.append('userName', username || ''); // 添加用户名到表单数据
+        try {
+            const response = await fetch('/api/edit_profile/', {
+                method: 'POST',
+                headers: {
+                    Authorization: `${token}`, // 添加 token
+                },
+                body: formData,
+            });
+
+            console.log(response); // 打印响应，检查是否正确
+
+            if (!response.ok) {
+                throw new Error('修改昵称失败');
+            }
+
+            const data = await response.json();
+            console.log('昵称修改成功:', data); // 打印修改结果，检查是否正确
+            alert('昵称修改成功');
+        } catch (error) {
+            alert('昵称修改失败，请重试');
+        }
+    };
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault(); // 阻止表单默认提交行为
+
+        // 获取输入值
+        const oldPassword = (document.getElementById('oldPassword') as HTMLInputElement).value;
+        const newPassword = (document.getElementById('newPassword') as HTMLInputElement).value;
+        const confirmPassword = (document.getElementById('confirmPassword') as HTMLInputElement).value;
+
+        // 前端验证
+        if (!oldPassword || !newPassword || !confirmPassword) {
+            alert('请填写所有密码字段');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            alert('两次输入的新密码不一致');
+            return;
+        }
+
+        if (newPassword.length < 8) {
+            alert('密码长度至少8位');
+            return;
+        }
+
+        console.log('正在修改密码...');
+
+        const formData = new FormData();
+        formData.append('userName', username || ''); // 当前用户名
+        formData.append('password', oldPassword);    // 旧密码（用于验证）
+        formData.append('newPassword', newPassword); // 新密码
+
+        try {
+            const response = await fetch('/api/edit_profile/', {
+                method: 'POST',
+                headers: {
+                    Authorization: `${token}`,
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || '密码修改失败');
+            }
+
+            const data = await response.json();
+            console.log('密码修改成功:', data);
+            alert('密码修改成功！请重新登录');
+            // 通常修改密码后需要重新登录
+            // logout(); // 假设有登出函数
+        } catch (error) {
+            console.error('密码修改错误:', error);
+            alert(error.message || '密码修改失败，请检查旧密码是否正确');
+        }
+    };
+
+    const handleEmailChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const oldPassword = (document.getElementById('email-oldPassword') as HTMLInputElement).value;
+        const newEmail = (document.getElementById('newEmail') as HTMLInputElement).value;
+
+        // 前端基础验证
+        if (!oldPassword || !newEmail) {
+            alert('请填写所有必填字段');
+            return;
+        }
+
+        if (!/^\S+@\S+\.\S+$/.test(newEmail)) {
+            alert('请输入有效的邮箱地址');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('userName', username || '');
+        formData.append('password', oldPassword); // 旧密码验证
+        formData.append('newEmail', newEmail);
+
+        try {
+            const response = await fetch('/api/edit_profile/', {
+                method: 'POST',
+                headers: {
+                    Authorization: `${token}`,
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || '邮箱修改失败');
+            }
+
+            alert('邮箱修改成功！');
+            // 可选：发送验证邮件
+        } catch (error) {
+            console.error('邮箱修改错误:', error);
+            alert(error.message || '邮箱修改失败，请检查密码是否正确');
+        }
+    };
+
 
     return (
         <div style={{ padding: 24, maxWidth: 600, margin: 'auto', background: '#fff', borderRadius: 8 }}>
@@ -144,7 +274,7 @@ const EditProfilePage = () => {
                 customRequest={handleUpload}
             >
                 {avatar ? (
-                    <Avatar 
+                    <Avatar
                         size={72}
                         src={"https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net" + avatar} />
                 ) : (
@@ -153,12 +283,74 @@ const EditProfilePage = () => {
                         <div style={{ marginTop: 0 }}>上传新头像</div>
                     </div>
                 )}
-            </Upload>    
-            
-            {/* 昵称 */}
-                <Input placeholder="Basic usage" />
-                              
-            
+            </Upload>
+
+            {/* 修改昵称 */}
+            <div>昵称</div>
+            <Input 
+                defaultValue={username}
+                onPressEnter={handleUsernameChange}
+            />
+
+            {/* 修改密码 */}
+            <div className="password-change-form">
+                <h3>修改密码</h3>
+                <form onSubmit={handlePasswordChange}>
+                    <div>
+                        <label>旧密码</label>
+                        <Input.Password
+                            id="oldPassword"
+                            placeholder="请输入当前密码"
+                        />
+                    </div>
+                    <div>
+                        <label>新密码</label>
+                        <Input.Password
+                            id="newPassword"
+                            placeholder="至少8位字符"
+                            minLength={8}
+                        />
+                    </div>
+                    <div>
+                        <label>确认新密码</label>
+                        <Input.Password
+                            id="confirmPassword"
+                            placeholder="再次输入新密码"
+                            minLength={8}
+                        />
+                    </div>
+                    <Button type="primary" htmlType="submit">
+                        确认修改
+                    </Button>
+                </form>
+            </div>
+
+            {/* 修改邮箱 */}
+            <div className="email-change-form">
+                <h3>修改邮箱</h3>
+                <form onSubmit={handleEmailChange}>
+                    <div>
+                        <label>当前密码</label>
+                        <Input.Password
+                            id="email-oldPassword"
+                            placeholder="请输入当前密码验证"
+                        />
+                    </div>
+                    <div>
+                        <label>新邮箱</label>
+                        <Input
+                            id="newEmail"
+                            type="email"
+                            placeholder="example@domain.com"
+                        />
+                    </div>
+                    <Button type="primary" htmlType="submit">
+                        确认修改
+                    </Button>
+                </form>
+            </div>
+
+
         </div>
     );
 };
