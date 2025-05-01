@@ -1,7 +1,7 @@
 'use client';
 
 import { ProForm, ProFormItem } from '@ant-design/pro-components';
-import { Flex, Upload, Avatar, message } from 'antd';
+import { Input, Flex, Upload, Avatar, message } from 'antd';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -12,10 +12,6 @@ import type { GetProp, UploadProps } from 'antd';
 type FileType = Parameters<GetProp<UploadProps, 'beforeUpload'>>[0];
 
 const EditProfilePage = () => {
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-    const [userName, setUserName] = useState<string | null>(null);
-    const [fileList, setFileList] = useState<any[]>([]); // 用于管理上传文件列表
-
     const state = useSelector((state: any) => state);
     console.log('Redux State:', state);
 
@@ -136,30 +132,33 @@ const EditProfilePage = () => {
     return (
         <div style={{ padding: 24, maxWidth: 600, margin: 'auto', background: '#fff', borderRadius: 8 }}>
             <h2 style={{ marginBottom: 24 }}>编辑个人信息</h2>
-            <ProForm>
-                {/* 头像上传 */}
-                <ProFormItem label="头像" name="avatar">
-                    <img src="https://spring25b.secoder.net/#/manage/paas${avatar}" alt="用户头像" /> {/* 显示当前头像 */}
-                    <Upload
-                        name="avatar"
-                        listType="picture-circle"
-                        className="avatar-uploader"
-                        showUploadList={false}
-                        beforeUpload={beforeUpload}
-                        onChange={handleChange}
-                        customRequest={handleUpload}
-                    >
-                        {avatarUrl ? (
-                            <Avatar size={64} src={avatarUrl} />
-                        ) : (
-                            <div>
-                                <PlusOutlined />
-                                <div style={{ marginTop: 8 }}>上传新头像</div>
-                            </div>
-                        )}
-                    </Upload>
-                </ProFormItem>
-            </ProForm>
+            {/* 头像上传 */}
+            <div>头像</div>
+            <Upload
+                name="avatar"
+                listType="picture-circle"
+                className="avatar-uploader"
+                showUploadList={false}
+                beforeUpload={beforeUpload}
+                onChange={handleChange}
+                customRequest={handleUpload}
+            >
+                {avatar ? (
+                    <Avatar 
+                        size={72}
+                        src={"https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net" + avatar} />
+                ) : (
+                    <div>
+                        <PlusOutlined />
+                        <div style={{ marginTop: 0 }}>上传新头像</div>
+                    </div>
+                )}
+            </Upload>    
+            
+            {/* 昵称 */}
+                <Input placeholder="Basic usage" />
+                              
+            
         </div>
     );
 };
