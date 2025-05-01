@@ -6,6 +6,7 @@ interface AuthState {
     password: string;
     email: string;
     phone: string;
+    avatar: string;
 }
 
 const initialState: AuthState = {
@@ -14,6 +15,7 @@ const initialState: AuthState = {
     password: "",
     email: "",
     phone: "",
+    avatar: "",
 };
 
 /**
@@ -40,16 +42,19 @@ export const authSlice = createSlice({
         setPhone: (state, action: PayloadAction<string>) => {
             state.phone = action.payload;
         },
+        setAvatar: (state, action: PayloadAction<string>) => {
+            state.avatar = action.payload;
+        },
         resetAuth: (state) => {
             state.token = "";
             state.name = "";
             state.password= "";
             state.email = "";
             state.phone = "";
-
+            state.avatar = "";
         },
     },
 });
 
-export const { setToken, setName, setPassword , setEmail, setPhone, resetAuth } = authSlice.actions;
+export const { setToken, setName, setPassword , setEmail, setPhone, resetAuth, setAvatar } = authSlice.actions;
 export default authSlice.reducer;
