@@ -344,7 +344,7 @@ const Page = () => {
     }
   };
 
-  // 渲染好友列表时，提供分组选择功能
+  // 渲染好友列表时，提供分组选择功能, 以及进入会话功能
   const renderFriendList = (friends: Friend[], showGroupOptions = false, groupId?: string) => (
     <List
       itemLayout="horizontal"
@@ -396,6 +396,14 @@ const Page = () => {
             >
               <Button danger>删除</Button>
             </Popconfirm>,
+            <Button
+              key="chat"
+              onClick={() => {
+                router.push(`/chat/${friend.userName}`);
+              }}
+            >
+              发消息
+            </Button>,
           ]}
         >
           <List.Item.Meta
