@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Input, Button, Layout, Typography, List, Avatar, Space, Popover } from 'antd';
+import { SmileOutlined, PictureOutlined } from '@ant-design/icons';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer } = Layout;
@@ -174,6 +175,7 @@ export default function ChatPage() {
 
             <Footer style={{ padding: '8px 16px' }}>
                 <Space.Compact style={{ width: '100%' }}>
+                    {/* 输入框 */}
                     <Input.TextArea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
@@ -186,6 +188,12 @@ export default function ChatPage() {
                         autoSize={{ minRows: 1, maxRows: 3 }}
                         placeholder="输入消息..."
                     />
+                    {/* 表情按钮 */}
+                    <Button icon={<SmileOutlined />} onClick={() => {/* 暂不实现 */ }} />
+                    {/* 图片按钮 */}
+                    <Button icon={<PictureOutlined />} onClick={() => {/* 暂不实现 */ }} />
+                    
+                    {/* 发送按钮 */}
                     <Button type="primary" icon={<SendOutlined />} onClick={handleSend}>
                         发送
                     </Button>
