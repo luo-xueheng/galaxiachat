@@ -51,6 +51,43 @@ export default function ChatPage() {
         messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
+    const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
+    const [friendAvatar, setFriendAvatar] = useState<string | undefined>(undefined);
+    
+    useEffect(() => {
+        const fetchAvatars = async () => {
+            try {
+
+                const fetchUserAvatar = async (userName: string): Promise<string | undefined> => {
+                    const response = await fetch('/api/user/' + userName, {
+                        method: 'GET',
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('获取头像失败');
+                    }
+
+                    const data = await response.json();
+                    console.log("用户头像获取成功", data.avatar);
+                    return data.avatar;
+                };
+
+                const [myAvatar, friendAvatar] = await Promise.all([
+                    fetchUserAvatar(currentUser!),
+                    fetchUserAvatar(friendUserName as string),
+                ]);
+
+                setMyAvatar(myAvatar);
+                setFriendAvatar(friendAvatar);
+
+            } catch (err) {
+                alert('无法加载头像，请检查网络或登录状态');
+            }
+        };
+
+        fetchAvatars();
+    }, [friendUserName, currentUser, currentUserToken]);
+
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
@@ -93,7 +130,7 @@ export default function ChatPage() {
                                     alignItems: item.sender === 'me' ? 'flex-end' : 'flex-start',
                                 }}
                             >
-                                {item.sender === 'friend' && <Avatar>{friendUserName?.[0]?.toUpperCase()}</Avatar>}
+                                {item.sender === 'friend' && <Avatar src={friendAvatar} />}
                                 <div>{item.content}</div>
                                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                     <Text type="secondary" style={{ fontSize: '0.75em' }}>
@@ -107,7 +144,7 @@ export default function ChatPage() {
                                         )
                                     )}
                                 </div>
-                                {item.sender === 'me' && <Avatar>{currentUser?.[0]?.toUpperCase()}</Avatar>}
+                                {item.sender === 'me' && <Avatar src={myAvatar} />}
                             </Space>
                         </List.Item>
                     )}
