@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Input, Button, Layout, Typography, List, Avatar, Space } from 'antd';
+import { Input, Button, Layout, Typography, List, Avatar, Space, Dropdown, Menu } from 'antd';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer } = Layout;
@@ -13,6 +13,8 @@ interface ChatMessage {
     content: string;
     timestamp: string;
     isRead?: boolean; // 新增：是否已读（可选）
+    replyToId?: string; // 我回复的是哪条消息
+    repliedByIds?: string[]; // 有哪些消息回复了我（可选字段）
 }
 
 export default function ChatPage() {
@@ -114,39 +116,53 @@ export default function ChatPage() {
                 <List
                     dataSource={messages}
                     renderItem={(item) => (
-                        <List.Item
-                            style={{
-                                justifyContent: item.sender === 'me' ? 'flex-end' : 'flex-start',
+                        <Dropdown
+                            menu={{
+                                items: [
+                                {
+                                    key: 'reply',
+                                    label: '回复',
+                                    // onClick: () => handleReply(item.id),
+                                },
+                                // 可以拓展更多操作
+                                ],
                             }}
+                            trigger={['contextMenu', 'hover']} // 右键 + 悬浮
                         >
-                            <Space
-                                align="end"
+                            <List.Item
                                 style={{
-                                    maxWidth: '70%',
-                                    background: item.sender === 'me' ? '#cfe9ff' : '#ffffff',
-                                    padding: '8px 12px',
-                                    borderRadius: '16px',
-                                    /* flexDirection: 'column', */
-                                    alignItems: item.sender === 'me' ? 'flex-end' : 'flex-start',
+                                    justifyContent: item.sender === 'me' ? 'flex-end' : 'flex-start',
                                 }}
                             >
-                                {item.sender === 'friend' && <Avatar src={friendAvatar} />}
-                                <div>{item.content}</div>
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                    <Text type="secondary" style={{ fontSize: '0.75em' }}>
-                                        {item.timestamp}
-                                    </Text>
-                                    {item.sender === 'me' && (
-                                        item.isRead ? (
-                                            <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
-                                        ) : (
-                                            <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
-                                        )
-                                    )}
-                                </div>
-                                {item.sender === 'me' && <Avatar src={myAvatar} />}
-                            </Space>
-                        </List.Item>
+                                <Space
+                                    align="end"
+                                    style={{
+                                        maxWidth: '70%',
+                                        background: item.sender === 'me' ? '#cfe9ff' : '#ffffff',
+                                        padding: '8px 12px',
+                                        borderRadius: '16px',
+                                        /* flexDirection: 'column', */
+                                        alignItems: item.sender === 'me' ? 'flex-end' : 'flex-start',
+                                    }}
+                                >
+                                    {item.sender === 'friend' && <Avatar src={friendAvatar} />}
+                                    <div>{item.content}</div>
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        <Text type="secondary" style={{ fontSize: '0.75em' }}>
+                                            {item.timestamp}
+                                        </Text>
+                                        {item.sender === 'me' && (
+                                            item.isRead ? (
+                                                <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
+                                            ) : (
+                                                <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
+                                            )
+                                        )}
+                                    </div>
+                                    {item.sender === 'me' && <Avatar src={myAvatar} />}
+                                </Space>
+                            </List.Item>
+                        </Dropdown>
                     )}
                 />
                 <div ref={messageEndRef} />
