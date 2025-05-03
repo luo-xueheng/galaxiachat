@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Input, Button, Layout, Typography, List, Avatar, Space, Dropdown, Menu } from 'antd';
+import { Input, Button, Layout, Typography, List, Avatar, Space, Popover } from 'antd';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer } = Layout;
@@ -106,6 +106,10 @@ export default function ChatPage() {
         setInput('');
     };
 
+    const handleReply = () => {
+        
+    };
+
     return (
         <Layout style={{ height: '100vh' }}>
             <Header style={{ background: '#fff', padding: '0 16px' }}>
@@ -116,23 +120,23 @@ export default function ChatPage() {
                 <List
                     dataSource={messages}
                     renderItem={(item) => (
-                        <Dropdown
-                            menu={{
-                                items: [
-                                {
-                                    key: 'reply',
-                                    label: '回复',
-                                    // onClick: () => handleReply(item.id),
-                                },
-                                // 可以拓展更多操作
-                                ],
+                        <List.Item
+                            style={{
+                                justifyContent: item.sender === 'me' ? 'flex-end' : 'flex-start',
                             }}
-                            trigger={['contextMenu', 'hover']} // 右键 + 悬浮
                         >
-                            <List.Item
-                                style={{
-                                    justifyContent: item.sender === 'me' ? 'flex-end' : 'flex-start',
-                                }}
+                            <Popover
+                                content={
+                                    <Space direction="vertical">
+                                        <Button type="link" size="small" onClick={() => handleReply()}>
+                                            回复
+                                        </Button>
+                                        {/* 其他操作可以继续加 */}
+                                    </Space>
+                                }
+                                trigger="hover"
+                                mouseEnterDelay={0.1}
+                                mouseLeaveDelay={0.2}
                             >
                                 <Space
                                     align="end"
@@ -161,8 +165,8 @@ export default function ChatPage() {
                                     </div>
                                     {item.sender === 'me' && <Avatar src={myAvatar} />}
                                 </Space>
-                            </List.Item>
-                        </Dropdown>
+                            </Popover>
+                        </List.Item>
                     )}
                 />
                 <div ref={messageEndRef} />
