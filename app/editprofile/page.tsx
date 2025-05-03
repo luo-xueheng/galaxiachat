@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from "next/navigation"; 
 import { ProForm, ProFormItem } from '@ant-design/pro-components';
 import { Input, Flex, Upload, Avatar, message, Button } from 'antd';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
@@ -10,26 +9,16 @@ import { useDispatch } from 'react-redux';
 import { setName, setAvatar, setEmail, setPhone } from '../redux/auth';
 import type { GetProp, UploadProps } from 'antd';
 
-import { configureStore } from '@reduxjs/toolkit';
-import { persistStore, persistReducer } from 'redux-persist';
-import storage from 'redux-persist/lib/storage'; // defaults to localStorage for web
-import { RootState } from '../redux/store';
-
 type FileType = Parameters<GetProp<UploadProps, 'beforeUpload'>>[0];
 
 const EditProfilePage = () => {
     const state = useSelector((state: any) => state);
     console.log('Redux State:', state);
 
-    const router = useRouter();
-
-    // 从 LocalStorage 获取 token
-    // const token = localStorage.getItem("token");
-    const [token, setToken] = useState(() => localStorage.getItem("token") || "");
+    // 从 Redux Store 获取 token
+    const token = useSelector((state: any) => state.auth.token);
     console.log('Token:', token); // 打印 token，检查是否正确
-    // const username = localStorage.getItem("userName");
-    const [username, setUsername] = useState(() => localStorage.getItem("userName") || ""); 
-    console.log('Username:', username); // 打印用户名，检查是否正确
+    const username = useSelector((state: any) => state.auth.name);
     const avatar = useSelector((state: any) => state.auth.avatar);
     console.log('Avatar:', avatar); // 打印头像，检查是否正确
 
@@ -59,7 +48,6 @@ const EditProfilePage = () => {
                 dispatch(setAvatar(data.avatar));
                 dispatch(setEmail(data.email));
                 dispatch(setPhone(data.phone));
-                
             } catch (error) {
                 message.error('无法加载用户信息');
                 console.error('获取用户信息失败:', error);
@@ -94,12 +82,9 @@ const EditProfilePage = () => {
     // 上传头像
     const handleUpload = async (option: any) => {
         const file = option.file as File
-        
         const formData = new FormData();
         formData.append('newAvatar', file); // 使用 newAvatar 字段上传文件
-        //setUsername(localStorage.getItem("userName"));
         formData.append('userName', username || ''); // 添加用户名到表单数据
-        console.log('FormData.userName:', formData.get('userName')); 
 
         try {
             const response = await fetch('/api/edit_profile/', {
@@ -168,9 +153,6 @@ const EditProfilePage = () => {
             const data = await response.json();
             console.log('昵称修改成功:', data); // 打印修改结果，检查是否正确
             alert('昵称修改成功');
-            localStorage.setItem("userName", newName); // 更新本地存储中的用户名
-            dispatch(setName(newName)); // 更新 Redux 中的用户名
-            setUsername(newName); // 更新组件状态中的用户名
         } catch (error) {
             alert('昵称修改失败，请重试');
         }
@@ -322,16 +304,6 @@ const EditProfilePage = () => {
     return (
         <div style={{ padding: 24, maxWidth: 600, margin: 'auto', background: '#fff', borderRadius: 8 }}>
             <h2 style={{ marginBottom: 24 }}>编辑个人信息</h2>
-            {/* 自动推到最右边 */}
-            <div style={{ marginLeft: "auto" }}>
-                <Button
-                    color="purple"
-                    variant="solid"
-                    onClick={() => router.push("/mainpage")}
-                >
-                    返回
-                </Button>
-            </div>
             {/* 头像上传 */}
             <div>头像</div>
             <Upload
@@ -451,3 +423,5 @@ const EditProfilePage = () => {
 };
 
 export default EditProfilePage;
+
+
