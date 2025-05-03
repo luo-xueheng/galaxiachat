@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Input, Button, Layout, Typography, List, Avatar, Space } from 'antd';
-import { SendOutlined } from '@ant-design/icons';
+import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
@@ -12,10 +12,18 @@ interface ChatMessage {
     sender: 'me' | 'friend';
     content: string;
     timestamp: string;
+    isRead?: boolean; // 新增：是否已读（可选）
 }
 
 export default function ChatPage() {
-    const { userName } = useParams(); // 获取路由中的用户名
+
+    const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
+    const currentUserToken = localStorage.getItem("token"); // 获取当前用户的token
+    const { userName: friendUserName } = useParams(); // 获取路由中的用户名(好友的name)
+    console.log("当前用户: ", currentUser);
+    console.log("当前用户token: ", currentUserToken);
+    console.log("好友: ", friendUserName);
+
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
             sender: 'friend',
@@ -26,8 +34,16 @@ export default function ChatPage() {
             sender: 'me',
             content: '嗨！最近怎么样？',
             timestamp: '2025-05-03 10:01',
+            isRead: true, // 模拟已读
+        },
+        {
+            sender: 'me',
+            content: '今天有空出来玩嘛？',
+            timestamp: '2025-05-03 10:05',
+            isRead: false, // 模拟未读
         },
     ]);
+
     const [input, setInput] = useState('');
     const messageEndRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +61,7 @@ export default function ChatPage() {
             sender: 'me',
             content: input,
             timestamp: new Date().toLocaleString(),
+            isRead: false, // 默认对方未读
         };
         setMessages([...messages, newMsg]);
         setInput('');
@@ -53,7 +70,7 @@ export default function ChatPage() {
     return (
         <Layout style={{ height: '100vh' }}>
             <Header style={{ background: '#fff', padding: '0 16px' }}>
-                <Text strong>{userName}</Text>
+                <Text strong>{friendUserName}</Text>
             </Header>
 
             <Content style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
@@ -66,20 +83,31 @@ export default function ChatPage() {
                             }}
                         >
                             <Space
+                                align="end"
                                 style={{
                                     maxWidth: '70%',
-                                    background: item.sender === 'me' ? '#cfe9ff' : '#f5f5f5',
+                                    background: item.sender === 'me' ? '#cfe9ff' : '#ffffff',
                                     padding: '8px 12px',
                                     borderRadius: '16px',
+                                    /* flexDirection: 'column', */
+                                    alignItems: item.sender === 'me' ? 'flex-end' : 'flex-start',
                                 }}
                             >
-                                {item.sender === 'friend' && <Avatar>{userName?.[0]?.toUpperCase()}</Avatar>}
-                                <div>
-                                    <div>{item.content}</div>
+                                {item.sender === 'friend' && <Avatar>{friendUserName?.[0]?.toUpperCase()}</Avatar>}
+                                <div>{item.content}</div>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                     <Text type="secondary" style={{ fontSize: '0.75em' }}>
                                         {item.timestamp}
                                     </Text>
+                                    {item.sender === 'me' && (
+                                        item.isRead ? (
+                                            <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
+                                        ) : (
+                                            <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
+                                        )
+                                    )}
                                 </div>
+                                {item.sender === 'me' && <Avatar>{currentUser?.[0]?.toUpperCase()}</Avatar>}
                             </Space>
                         </List.Item>
                     )}
