@@ -2,16 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Input, Button, Layout, Typography, List, Avatar, Space, Popover } from 'antd';
+import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image } from 'antd';
 import { SmileOutlined, PictureOutlined } from '@ant-design/icons';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
 
+const emojiList = ['😊', '😂', '🥰', '👍', '🎉', '😢', '😡', '❤️', '👏']; // 表情列表
+
+type MsgType = 'text' | 'emoji' | 'image'; // 消息类型
 interface ChatMessage {
     id: number;                 // msg_id
     sender: 'me' | 'friend';    // 判断 sender_name 是否是自己
+    msgType: MsgType;           // 消息类型
     content: string;            // 消息内容
     timestamp: string;          // 格式化后的 created_at
     isRead?: boolean;           // 是否已读（可选）
@@ -30,6 +34,7 @@ export default function ChatPage() {
     console.log("当前用户token: ", currentUserToken);
     console.log("好友: ", friendUserName);
 
+    /*
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
             id: 997,
@@ -52,6 +57,8 @@ export default function ChatPage() {
             isRead: false, // 模拟未读
         },
     ]);
+    */
+    const [messages, setMessages] = useState<ChatMessage[]>([]); // 初始化为空数组
 
     const [input, setInput] = useState('');
     const messageEndRef = useRef<HTMLDivElement>(null);
@@ -134,7 +141,12 @@ export default function ChatPage() {
                     const newMessage: ChatMessage = {
                         id: msg.msg_id,
                         sender: isMe ? 'me' : 'friend',
-                        content: msg.content,
+                        msgType: msg.msg_type as MsgType,
+                        //content: msg.content,
+                        content:
+                            msg.msg_type === 'image'
+                                ? `https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${msg.content}`
+                                : msg.content,
                         timestamp: new Date(msg.created_at * 1000).toLocaleString(),
                         isRead: msg.is_read,
                         readBy: msg.read_by,
@@ -199,6 +211,70 @@ export default function ChatPage() {
         
     };
 
+    const handleSendEmoji = (emoji: string) => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+        socket.send(JSON.stringify({
+            action: 'send_message',
+            msg_type: 'emoji',
+            content: emoji,
+        }));
+    };
+
+    const emojiContent = (
+        <div style={{ display: 'flex', flexWrap: 'wrap', maxWidth: 200 }}>
+            {emojiList.map((emoji) => (
+                <span
+                    key={emoji}
+                    style={{ fontSize: 24, padding: 5, cursor: 'pointer' }}
+                    onClick={() => handleSendEmoji(emoji)}
+                >
+                    {emoji}
+                </span>
+            ))}
+        </div>
+    );
+
+    const handleSendImage = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/png, image/jpeg';
+
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('图片不能超过10MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = reader.result as string;
+
+                if (socket?.readyState !== WebSocket.OPEN) {
+                    alert('WebSocket 未连接');
+                    return;
+                }
+
+                socket.send(
+                    JSON.stringify({
+                        action: 'send_message',
+                        msg_type: 'image',
+                        content: base64,
+                    })
+                );
+
+                console.log('[图片已发送]', base64.slice(0, 100) + '...');
+            };
+
+            reader.readAsDataURL(file);
+        };
+
+        input.click();
+    };
+
     return (
         <Layout style={{ height: '100vh' }}>
             <Header style={{ background: '#fff', padding: '0 16px' }}>
@@ -240,7 +316,24 @@ export default function ChatPage() {
                                 >
                                     {item.sender === 'friend' && <Avatar src={friendAvatar} />}
                                     
-                                    <div>{item.content}</div>
+                                    <div>
+                                        {item.msgType === 'emoji' ? (
+                                            <span style={{ fontSize: 36 }}>{item.content}</span>
+                                        ) : item.msgType === 'image' ? (
+                                                <Image
+                                                    src={item.content}
+                                                    alt="图片消息"
+                                                    style={{ maxWidth: 200, borderRadius: 8 }}
+                                                    preview={{
+                                                        mask: '点击预览',
+                                                    }}
+                                                    placeholder
+                                                />
+                                        ) : (
+                                            <span>{item.content}</span>
+                                        )}
+                                    </div>
+
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                         <Text type="secondary" style={{ fontSize: '0.75em' }}>
                                             {item.timestamp}
@@ -277,13 +370,48 @@ export default function ChatPage() {
                         autoSize={{ minRows: 1, maxRows: 3 }}
                         placeholder="输入消息..."
                     />
+                    
                     {/* 表情按钮 */}
-                    <Button icon={<SmileOutlined />} onClick={() => {/* 暂不实现 */ }} />
+                    <Popover content={emojiContent} trigger="click">
+                        <Button icon={<SmileOutlined />} />
+                    </Popover>
+                    
                     {/* 图片按钮 */}
-                    <Button icon={<PictureOutlined />} onClick={() => {/* 暂不实现 */ }} />
+                    <Button
+                        icon={<PictureOutlined />}
+                        onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/png, image/jpeg';
+                            input.onchange = async () => {
+                                const file = input.files?.[0];
+                                if (!file) return;
+                                if (file.size > 10 * 1024 * 1024) {
+                                    alert('图片不能超过10MB');
+                                    return;
+                                }
+
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                    const base64 = reader.result as string;
+                                    if (socket?.readyState === WebSocket.OPEN) {
+                                        socket.send(
+                                            JSON.stringify({
+                                                action: 'send_message',
+                                                msg_type: 'image',
+                                                content: base64,
+                                            })
+                                        );
+                                    }
+                                };
+                                reader.readAsDataURL(file);
+                            };
+                            input.click();
+                        }}
+                    />
                     
                     {/* 发送按钮 */}
-                    <Button type="primary" icon={<SendOutlined />} onClick={handleSend}>
+                    <Button type="primary" icon={<SendOutlined />} onClick={ handleSend }>
                         发送
                     </Button>
                 </Space.Compact>
