@@ -290,6 +290,8 @@ export default function ChatPage() {
                                 justifyContent: item.sender === 'me' ? 'flex-end' : 'flex-start',
                             }}
                         >
+                            {/* 好友头像 */}
+                            {item.sender === 'friend' && <Avatar src={friendAvatar} />}
                             <Popover
                                 content={
                                     <Space direction="vertical">
@@ -308,15 +310,14 @@ export default function ChatPage() {
                                         background: item.sender === 'me' ? '#cfe9ff' : '#ffffff',
                                         padding: '8px 12px',
                                         borderRadius: '16px',
-                                        /* flexDirection: 'column', */
+                                        flexDirection: 'column',
                                         alignItems: item.sender === 'me' ? 'flex-end' : 'flex-start',
                                     }}
                                 >
-                                    {item.sender === 'friend' && <Avatar src={friendAvatar} />}
-                                    
+                                    {/* 消息内容 */}
                                     <div>
                                         {item.msgType === 'emoji' ? (
-                                            <span style={{ fontSize: 36 }}>{item.content}</span>
+                                            <span style={{ fontSize: 36, marginLeft: 4 }}>{item.content}</span>
                                         ) : item.msgType === 'image' ? (
                                                 <Image
                                                     src={item.content}
@@ -331,23 +332,30 @@ export default function ChatPage() {
                                             <span>{item.content}</span>
                                         )}
                                     </div>
-    
-                                    {item.sender === 'me' && <Avatar src={myAvatar} />}
+                                    
+                                    {/* 消息时间和已读状态 */}
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        {item.sender === 'me' && (
+                                            item.isRead ? (
+                                                <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
+                                            ) : (
+                                                <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
+                                            )
+                                        )}
+                                        
+                                        <Text type="secondary" style={{ fontSize: '0.75em' }}>
+                                            {item.timestamp}
+                                        </Text>
+                                        
+                                    </div>
+                                    
                                 </Space>
                             </Popover>
+
+                            {/* 自己头像 */}
+                            {item.sender === 'me' && <Avatar src={myAvatar} />}
                             
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                <Text type="secondary" style={{ fontSize: '0.75em', marginLeft: '8px' }}>
-                                    {item.timestamp}
-                                </Text>
-                                {item.sender === 'me' && (
-                                    item.isRead ? (
-                                        <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
-                                    ) : (
-                                        <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
-                                    )
-                                )}
-                            </div>
+
                         </List.Item>
                     )}
                 />
