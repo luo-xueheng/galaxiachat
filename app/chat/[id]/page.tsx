@@ -22,7 +22,9 @@ export default function ChatPage() {
 
     const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
     const currentUserToken = localStorage.getItem("token"); // 获取当前用户的token
-    const { userName: friendUserName } = useParams(); // 获取路由中的用户名(好友的name)
+    // const { userName: friendUserName } = useParams(); // 获取路由中的用户名(好友的name)
+    const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
+    
     console.log("当前用户: ", currentUser);
     console.log("当前用户token: ", currentUserToken);
     console.log("好友: ", friendUserName);

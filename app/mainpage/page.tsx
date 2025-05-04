@@ -344,6 +344,45 @@ const Page = () => {
     }
   };
 
+  const handleCreateConversation = async (friendUserName: string) => {
+    const currentUser = localStorage.getItem("userName");
+    const currentUserToken = localStorage.getItem("token");
+
+    if (!currentUser || !currentUserToken) {
+      message.error("请先登录");
+      return;
+    }
+
+    const ws = new WebSocket(`wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/chat/new/?token=${currentUserToken}`);
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        action: "create_conversation",
+        user_username: currentUser,
+        is_group: false,
+        member_usernames: [friendUserName],
+        name: ""
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.action === "conversation_created" && data.success) {
+        const conversationId = data.conversation.id;
+        localStorage.setItem("currentChatFriendUserName", friendUserName);
+        router.push(`/chat/${conversationId}`);
+        ws.close();
+      } else {
+        message.error("创建会话失败");
+        ws.close();
+      }
+    };
+
+    ws.onerror = () => {
+      message.error("WebSocket 连接失败");
+    };
+  };
+
   // 渲染好友列表时，提供分组选择功能, 以及进入会话功能
   const renderFriendList = (friends: Friend[], showGroupOptions = false, groupId?: string) => (
     <List
@@ -398,12 +437,10 @@ const Page = () => {
             </Popconfirm>,
             <Button
               key="chat"
-              onClick={() => {
-                router.push(`/chat/${friend.userName}`);
-              }}
+              onClick={() => handleCreateConversation(friend.userName)}
             >
               发消息
-            </Button>,
+            </Button>
           ]}
         >
           <List.Item.Meta
