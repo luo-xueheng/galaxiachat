@@ -299,9 +299,7 @@ export default function ChatPage() {
                                         {/* 其他操作可以继续加 */}
                                     </Space>
                                 }
-                                trigger="hover"
-                                mouseEnterDelay={0.1}
-                                mouseLeaveDelay={0.2}
+                                trigger="contextMenu"
                             >
                                 <Space
                                     align="end"
@@ -333,22 +331,23 @@ export default function ChatPage() {
                                             <span>{item.content}</span>
                                         )}
                                     </div>
-
-                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                        <Text type="secondary" style={{ fontSize: '0.75em' }}>
-                                            {item.timestamp}
-                                        </Text>
-                                        {item.sender === 'me' && (
-                                            item.isRead ? (
-                                                <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
-                                            ) : (
-                                                <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
-                                            )
-                                        )}
-                                    </div>
+    
                                     {item.sender === 'me' && <Avatar src={myAvatar} />}
                                 </Space>
                             </Popover>
+                            
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <Text type="secondary" style={{ fontSize: '0.75em', marginLeft: '8px' }}>
+                                    {item.timestamp}
+                                </Text>
+                                {item.sender === 'me' && (
+                                    item.isRead ? (
+                                        <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
+                                    ) : (
+                                        <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
+                                    )
+                                )}
+                            </div>
                         </List.Item>
                     )}
                 />
