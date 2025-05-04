@@ -10,19 +10,20 @@ const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
 
 interface ChatMessage {
-    sender: 'me' | 'friend';
-    content: string;
-    timestamp: string;
-    isRead?: boolean; // 新增：是否已读（可选）
-    replyToId?: string; // 我回复的是哪条消息
-    repliedByIds?: string[]; // 有哪些消息回复了我（可选字段）
+    id: number;                 // msg_id
+    sender: 'me' | 'friend';    // 判断 sender_name 是否是自己
+    content: string;            // 消息内容
+    timestamp: string;          // 格式化后的 created_at
+    isRead?: boolean;           // 是否已读（可选）
+    readBy?: string[];          // 已读成员用户名数组（可选）
+    replyToId?: number;         // 回复的消息ID
+    repliedByIds?: number[];    // 被哪些消息回复
 }
 
 export default function ChatPage() {
 
     const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
     const currentUserToken = localStorage.getItem("token"); // 获取当前用户的token
-    // const { userName: friendUserName } = useParams(); // 获取路由中的用户名(好友的name)
     const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
     
     console.log("当前用户: ", currentUser);
@@ -31,17 +32,20 @@ export default function ChatPage() {
 
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
+            id: 997,
             sender: 'friend',
             content: '你好呀～',
             timestamp: '2025-05-03 10:00',
         },
         {
+            id: 998,
             sender: 'me',
             content: '嗨！最近怎么样？',
             timestamp: '2025-05-03 10:01',
             isRead: true, // 模拟已读
         },
         {
+            id: 999,
             sender: 'me',
             content: '今天有空出来玩嘛？',
             timestamp: '2025-05-03 10:05',
@@ -93,19 +97,101 @@ export default function ChatPage() {
         fetchAvatars();
     }, [friendUserName, currentUser, currentUserToken]);
 
+    const { chatId } = useParams(); // 获取路由中的chatId
+    const [socket, setSocket] = useState<WebSocket | null>(null);
+
+    useEffect(() => {
+        if (!chatId) {
+            console.warn('[WebSocket] 缺少 chatId，终止连接');
+            console.log("chatId: ", chatId);
+            return;
+        }
+
+        if (!currentUserToken) {
+            console.warn('[WebSocket] 缺少 currentUserToken，终止连接');
+            return;
+        }
+
+        console.log(`[WebSocket] 尝试连接到 chatId=${chatId} 的聊天 WebSocket`);
+
+        const ws = new WebSocket(`wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/chat/${chatId}/?token=${currentUserToken}`);
+
+        ws.onopen = () => {
+            console.log('[WebSocket] 连接已建立');
+        };
+
+        ws.onmessage = (event) => {
+            console.log('[WebSocket] 收到原始消息：', event.data);
+
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.action === 'new_message') {
+                    const msg = data.message;
+                    const senderName = msg.sender_name;
+                    const isMe = senderName === currentUser; // 当前用户名来自 localStorage
+
+                    const newMessage: ChatMessage = {
+                        id: msg.msg_id,
+                        sender: isMe ? 'me' : 'friend',
+                        content: msg.content,
+                        timestamp: new Date(msg.created_at * 1000).toLocaleString(),
+                        isRead: msg.is_read,
+                        readBy: msg.read_by,
+                    };
+
+                    console.log('[WebSocket] 新消息解析成功，添加到聊天记录：', newMessage);
+                    setMessages((prev) => [...prev, newMessage]);
+                } else {
+                    console.log('[WebSocket] 收到非 new_message 的 action：', data.action);
+                }
+            } catch (err) {
+                console.error('[WebSocket] 消息解析失败：', err);
+            }
+        };
+
+        ws.onclose = () => {
+            console.warn('[WebSocket] 连接已关闭');
+        };
+
+        ws.onerror = (err) => {
+            console.error('[WebSocket] 发生错误：', err);
+        };
+
+        setSocket(ws);
+
+        return () => {
+            console.log('[WebSocket] 正在关闭连接...');
+            ws.close();
+        };
+    }, [chatId, currentUserToken]);
+    
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
     const handleSend = () => {
-        if (!input.trim()) return;
-        const newMsg: ChatMessage = {
-            sender: 'me',
+        console.log('[handleSend] 触发发送');
+
+        if (!input.trim()) {
+            console.log('[handleSend] 输入为空，发送终止');
+            return;
+        }
+
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error('[handleSend] WebSocket 未连接，当前状态为：', socket?.readyState);
+            return;
+        }
+
+        const messagePayload = {
+            action: 'send_message',
+            msg_type: 'text',
             content: input,
-            timestamp: new Date().toLocaleString(),
-            isRead: false, // 默认对方未读
         };
-        setMessages([...messages, newMsg]);
+
+        console.log('[handleSend] 发送内容：', messagePayload);
+        socket.send(JSON.stringify(messagePayload));
+
         setInput('');
     };
 
@@ -153,6 +239,7 @@ export default function ChatPage() {
                                     }}
                                 >
                                     {item.sender === 'friend' && <Avatar src={friendAvatar} />}
+                                    
                                     <div>{item.content}</div>
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                         <Text type="secondary" style={{ fontSize: '0.75em' }}>
