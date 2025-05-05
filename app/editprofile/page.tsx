@@ -8,6 +8,7 @@ import { useSelector } from 'react-redux';
 import { useDispatch } from 'react-redux';
 import { setName, setAvatar, setEmail, setPhone } from '../redux/auth';
 import type { GetProp, UploadProps } from 'antd';
+import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
 
 type FileType = Parameters<GetProp<UploadProps, 'beforeUpload'>>[0];
 
@@ -131,7 +132,7 @@ const EditProfilePage = () => {
     const handleUsernameChange = async (e: React.KeyboardEvent<HTMLInputElement>) => {
         const newName = e.currentTarget.value;
         console.log('New Name:', newName); // 打印新昵称，检查是否正确
-
+        const oldName = localStorage.getItem('userName');// 从本地存储获取旧昵称
         const formData = new FormData();
         formData.append('newUserName', newName); // 使用 newUserName 字段上传文件
         formData.append('userName', username || ''); // 添加用户名到表单数据
@@ -153,6 +154,21 @@ const EditProfilePage = () => {
             const data = await response.json();
             console.log('昵称修改成功:', data); // 打印修改结果，检查是否正确
             alert('昵称修改成功');
+            const responseuserprofile = await fetch('/api/user_profile/?userName=' + username, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            // // 同时偷偷登录，获取新token
+            // const responselogin = await fetch(`${BACKEND_URL}/api/login`, {
+            //       method: "POST",
+            //       body: JSON.stringify({
+            //           newName,
+            //           password,
+            //       }),
+            //   })
         } catch (error) {
             alert('昵称修改失败，请重试');
         }

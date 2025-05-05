@@ -461,7 +461,8 @@ const Page = () => {
         </Button>
         <Button onClick={() => router.push("/signout")}>signout</Button>
         <Button onClick={() => router.push("/searchuser")}>searchuser</Button>
-        
+        <Button onClick={() => router.push("/create-groupchat")}>creategroupchat</Button>
+
         {/* 自动推到最右边 */}
         <div style={{ marginLeft: "auto" }}>
           <Button
@@ -472,7 +473,7 @@ const Page = () => {
             Edit profile
           </Button>
         </div>
-        
+
       </Flex>
       <Flex gap="middle" style={{ marginTop: 16 }}>
         <div>

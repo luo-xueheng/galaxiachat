@@ -82,7 +82,6 @@ const SearchUserPage: React.FC = () => {
       router.push('/login'); // ✅ 如果没登录，立刻跳转
       return;
     }
-
     dispatch(setToken(storedToken));
     dispatch(setName(storedUserName));
 
