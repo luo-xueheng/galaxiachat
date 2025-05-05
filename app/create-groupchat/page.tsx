@@ -81,6 +81,7 @@ const Page = () => {
                 const conversationId = data.conversation.id;
 
                 localStorage.setItem("currentChatGroupId", conversationId);
+                localStorage.setItem("isGroupChat", "true");
                 router.push(`/chat/${conversationId}`);
                 ws.close();
             } else {
