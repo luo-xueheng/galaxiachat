@@ -29,7 +29,7 @@ export default function ChatPage() {
     const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
     const currentUserToken = localStorage.getItem("token"); // 获取当前用户的token
     const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
-    
+
     console.log("当前用户: ", currentUser);
     console.log("当前用户token: ", currentUserToken);
     console.log("好友: ", friendUserName);
@@ -58,8 +58,7 @@ export default function ChatPage() {
         },
     ]);
     */
-    const [messages, setMessages] = useState<ChatMessage[]>([]); // 初始化为空数组
-
+    
     const [input, setInput] = useState('');
     const messageEndRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +68,7 @@ export default function ChatPage() {
 
     const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
     const [friendAvatar, setFriendAvatar] = useState<string | undefined>(undefined);
-    
+
     useEffect(() => {
         const fetchAvatars = async () => {
             try {
@@ -78,7 +77,7 @@ export default function ChatPage() {
                     const response = await fetch('/api/user/' + userName, {
                         method: 'GET',
                     });
-                    
+
                     if (!response.ok) {
                         throw new Error('获取头像失败');
                     }
@@ -105,44 +104,92 @@ export default function ChatPage() {
     }, [friendUserName, currentUser, currentUserToken]);
 
     const { chatId } = useParams(); // 获取路由中的chatId
+    const [messages, setMessages] = useState<ChatMessage[]>([]); // 初始化为空数组
     const [socket, setSocket] = useState<WebSocket | null>(null);
-
+    
+    // ✅ 拉取历史消息
     useEffect(() => {
-        if (!chatId) {
-            console.warn('[WebSocket] 缺少 chatId，终止连接');
-            console.log("chatId: ", chatId);
+        if (!chatId || !currentUser || !currentUserToken) return;
+
+        const fetchHistoryMessages = async () => {
+            try {
+                const url = new URL('https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/get_conversation_messages/');
+                url.searchParams.set('userName', currentUser);
+                url.searchParams.set('conversation_id', String(chatId));
+
+                const res = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `${currentUserToken}`,
+                    },
+                });
+
+                const data = await res.json();
+
+                if (data.code !== 0) {
+                    console.error('获取历史消息失败:', data.info);
+                    return;
+                }
+                console.log('获取历史消息成功:', data); // 🟢 打印获取的历史消息
+
+                const historyMessages: ChatMessage[] = data.messages.map((msg: any) => {
+                    const isMe = msg.sender_name === currentUser;
+
+                    return {
+                        id: msg.msg_id,
+                        sender: isMe ? 'me' : 'friend',
+                        msgType: msg.msg_type as MsgType,
+                        content:
+                            msg.msg_type === 'image'
+                                ? `https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${msg.content}`
+                                : msg.content,
+                        timestamp: new Date(msg.created_at * 1000).toLocaleString(),
+                        isRead: msg.is_read,
+                        readBy: msg.read_by,
+                    };
+                });
+
+                // 排序：确保是从早到晚
+                // historyMessages.sort((a, b) => a.id - b.id);
+
+                setMessages(historyMessages);
+            } catch (error) {
+                console.error('请求历史消息时出错:', error);
+            }
+        };
+
+        fetchHistoryMessages();
+    }, [chatId, currentUser, currentUserToken]);
+
+    // ✅ 建立 WebSocket 连接，监听新消息
+    useEffect(() => {
+        if (!chatId || !currentUserToken) {
+            console.warn('[WebSocket] 缺少必要参数，终止连接');
             return;
         }
 
-        if (!currentUserToken) {
-            console.warn('[WebSocket] 缺少 currentUserToken，终止连接');
-            return;
-        }
-
-        console.log(`[WebSocket] 尝试连接到 chatId=${chatId} 的聊天 WebSocket`);
-
-        const ws = new WebSocket(`wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/chat/${chatId}/?token=${currentUserToken}`);
+        const ws = new WebSocket(
+            `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/chat/${chatId}/?token=${currentUserToken}`
+        );
 
         ws.onopen = () => {
             console.log('[WebSocket] 连接已建立');
         };
 
         ws.onmessage = (event) => {
-            console.log('[WebSocket] 收到原始消息：', event.data);
+            console.log('[WebSocket] 收到消息：', event.data);
 
             try {
                 const data = JSON.parse(event.data);
 
                 if (data.action === 'new_message') {
                     const msg = data.message;
-                    const senderName = msg.sender_name;
-                    const isMe = senderName === currentUser; // 当前用户名来自 localStorage
+                    const isMe = msg.sender_name === currentUser;
 
                     const newMessage: ChatMessage = {
                         id: msg.msg_id,
                         sender: isMe ? 'me' : 'friend',
                         msgType: msg.msg_type as MsgType,
-                        //content: msg.content,
                         content:
                             msg.msg_type === 'image'
                                 ? `https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${msg.content}`
@@ -152,10 +199,7 @@ export default function ChatPage() {
                         readBy: msg.read_by,
                     };
 
-                    console.log('[WebSocket] 新消息解析成功，添加到聊天记录：', newMessage);
                     setMessages((prev) => [...prev, newMessage]);
-                } else {
-                    console.log('[WebSocket] 收到非 new_message 的 action：', data.action);
                 }
             } catch (err) {
                 console.error('[WebSocket] 消息解析失败：', err);
@@ -167,7 +211,7 @@ export default function ChatPage() {
         };
 
         ws.onerror = (err) => {
-            console.error('[WebSocket] 发生错误：', err);
+            console.error('[WebSocket] 错误发生：', err);
         };
 
         setSocket(ws);
@@ -176,7 +220,7 @@ export default function ChatPage() {
             console.log('[WebSocket] 正在关闭连接...');
             ws.close();
         };
-    }, [chatId, currentUserToken]);
+    }, [chatId, currentUserToken, currentUser]);
     
     useEffect(() => {
         scrollToBottom();
@@ -204,11 +248,24 @@ export default function ChatPage() {
         console.log('[handleSend] 发送内容：', messagePayload);
         socket.send(JSON.stringify(messagePayload));
 
+        /*/ 🟢 立刻加一条本地“临时消息”，避免页面刷新后没保存
+        const tempId = -Date.now(); // ✅ 负数临时 ID
+        const newMessage: ChatMessage = {
+            id: tempId, // 临时 ID，后续收到正式的 new_message 会覆盖
+            sender: 'me',
+            msgType: 'text',
+            content: input,
+            timestamp: new Date().toLocaleString(),
+            isRead: true,
+            readBy: [],
+        };
+
+        setMessages((prev) => [...prev, newMessage]);*/
         setInput('');
     };
 
     const handleReply = () => {
-        
+
     };
 
     const handleSendEmoji = (emoji: string) => {
@@ -319,20 +376,20 @@ export default function ChatPage() {
                                         {item.msgType === 'emoji' ? (
                                             <span style={{ fontSize: 36, marginLeft: 4 }}>{item.content}</span>
                                         ) : item.msgType === 'image' ? (
-                                                <Image
-                                                    src={item.content}
-                                                    alt="图片消息"
-                                                    style={{ maxWidth: 200, borderRadius: 8 }}
-                                                    preview={{
-                                                        mask: '点击预览',
-                                                    }}
-                                                    placeholder
-                                                />
+                                            <Image
+                                                src={item.content}
+                                                alt="图片消息"
+                                                style={{ maxWidth: 200, borderRadius: 8 }}
+                                                preview={{
+                                                    mask: '点击预览',
+                                                }}
+                                                placeholder
+                                            />
                                         ) : (
                                             <span>{item.content}</span>
                                         )}
                                     </div>
-                                    
+
                                     {/* 消息时间和已读状态 */}
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                         {item.sender === 'me' && (
@@ -342,19 +399,19 @@ export default function ChatPage() {
                                                 <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
                                             )
                                         )}
-                                        
+
                                         <Text type="secondary" style={{ fontSize: '0.75em' }}>
                                             {item.timestamp}
                                         </Text>
-                                        
+
                                     </div>
-                                    
+
                                 </Space>
                             </Popover>
 
                             {/* 自己头像 */}
                             {item.sender === 'me' && <Avatar src={myAvatar} />}
-                            
+
 
                         </List.Item>
                     )}
@@ -377,12 +434,12 @@ export default function ChatPage() {
                         autoSize={{ minRows: 1, maxRows: 3 }}
                         placeholder="输入消息..."
                     />
-                    
+
                     {/* 表情按钮 */}
                     <Popover content={emojiContent} trigger="click">
                         <Button icon={<SmileOutlined />} />
                     </Popover>
-                    
+
                     {/* 图片按钮 */}
                     <Button
                         icon={<PictureOutlined />}
@@ -416,9 +473,9 @@ export default function ChatPage() {
                             input.click();
                         }}
                     />
-                    
+
                     {/* 发送按钮 */}
-                    <Button type="primary" icon={<SendOutlined />} onClick={ handleSend }>
+                    <Button type="primary" icon={<SendOutlined />} onClick={handleSend}>
                         发送
                     </Button>
                 </Space.Compact>
