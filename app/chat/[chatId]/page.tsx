@@ -14,6 +14,7 @@ const { Text } = Typography;
 
 
 const emojiList = ['😊', '😂', '🥰', '👍', '🎉', '😢', '😡', '❤️', '👏']; // 表情列表
+const groupid = localStorage.getItem("currentChatGroupId");
 
 type MsgType = 'text' | 'emoji' | 'image'; // 消息类型
 interface ChatMessage {
@@ -34,7 +35,7 @@ export default function ChatPage() {
     const currentUserToken = localStorage.getItem("token"); // 获取当前用户的token
     const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
     const groupname = localStorage.getItem("currentChatGroupName"); // 获取当前群聊的名称
-    const groupId = localStorage.getItem("currentGroupId"); // 获取当前群聊的ID
+    const groupId = localStorage.getItem("currentChatGroupId"); // 获取当前群聊的ID
     const isGroupChat = localStorage.getItem("isGroupChat"); // 判断是否是群聊
     console.log("当前用户: ", currentUser);
     console.log("当前用户token: ", currentUserToken);
@@ -288,7 +289,6 @@ export default function ChatPage() {
     };
 
     const handleleavegroup = () => {
-        const groupid = localStorage.getItem("currentChatGroupId");
         const token = localStorage.getItem("token");
         console.log("当前groupid", groupid)
         fetch(`${BACKEND_URL}/api/leave-groups`, {
