@@ -5,9 +5,13 @@ import { useParams } from 'next/navigation';
 import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image } from 'antd';
 import { SmileOutlined, PictureOutlined } from '@ant-design/icons';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
+import { BACKEND_URL } from "../../constants/string";
+import { Drawer } from 'antd';
+import { useRouter } from 'next/navigation'; // 使用新的 useRouter
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
+
 
 const emojiList = ['😊', '😂', '🥰', '👍', '🎉', '😢', '😡', '❤️', '👏']; // 表情列表
 
@@ -29,10 +33,18 @@ export default function ChatPage() {
     const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
     const currentUserToken = localStorage.getItem("token"); // 获取当前用户的token
     const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
-    
+    const groupname = localStorage.getItem("currentChatGroupName"); // 获取当前群聊的名称
+    const groupId = localStorage.getItem("currentGroupId"); // 获取当前群聊的ID
+    const isGroupChat = localStorage.getItem("isGroupChat"); // 判断是否是群聊
     console.log("当前用户: ", currentUser);
     console.log("当前用户token: ", currentUserToken);
     console.log("好友: ", friendUserName);
+    const router = useRouter();
+
+    const [drawerOpen, setDrawerOpen] = useState(false);
+
+    const showDrawer = () => setDrawerOpen(true);
+    const closeDrawer = () => setDrawerOpen(false);
 
     /*
     const [messages, setMessages] = useState<ChatMessage[]>([
@@ -69,7 +81,7 @@ export default function ChatPage() {
 
     const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
     const [friendAvatar, setFriendAvatar] = useState<string | undefined>(undefined);
-    
+
     useEffect(() => {
         const fetchAvatars = async () => {
             try {
@@ -78,7 +90,7 @@ export default function ChatPage() {
                     const response = await fetch('/api/user/' + userName, {
                         method: 'GET',
                     });
-                    
+
                     if (!response.ok) {
                         throw new Error('获取头像失败');
                     }
@@ -177,7 +189,7 @@ export default function ChatPage() {
             ws.close();
         };
     }, [chatId, currentUserToken]);
-    
+
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
@@ -208,7 +220,7 @@ export default function ChatPage() {
     };
 
     const handleReply = () => {
-        
+
     };
 
     const handleSendEmoji = (emoji: string) => {
@@ -275,10 +287,49 @@ export default function ChatPage() {
         input.click();
     };
 
+    const handleleavegroup = () => {
+        const groupid = localStorage.getItem("currentChatGroupId");
+        const token = localStorage.getItem("token");
+        console.log("当前groupid", groupid)
+        fetch(`${BACKEND_URL}/api/leave-groups`, {
+            method: "POST",
+            headers: {
+                Authorization: `${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                group_id: groupid,
+            }),
+        })
+            .then((res) => res.json())
+            .then((res) => {
+                if (Number(res.code) === 0) {
+                    alert("退出群聊成功");
+                    localStorage.removeItem("currentGroupId");
+                    localStorage.removeItem("currentChatGroupName");
+                    localStorage.removeItem("isGroupChat");
+                    router.push("/mainpage");
+                }
+                else {
+                    console.log("退出群聊失败", res);
+                }
+            })
+    };
+
     return (
         <Layout style={{ height: '100vh' }}>
             <Header style={{ background: '#fff', padding: '0 16px' }}>
-                <Text strong>{friendUserName}</Text>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text strong>
+                        {isGroupChat === 'true' ? groupname : friendUserName}
+                    </Text>
+
+                    {isGroupChat === 'true' && (
+                        <Button type="link" onClick={showDrawer}>
+                            群聊管理
+                        </Button>
+                    )}
+                </div>
             </Header>
 
             <Content style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
@@ -319,20 +370,20 @@ export default function ChatPage() {
                                         {item.msgType === 'emoji' ? (
                                             <span style={{ fontSize: 36, marginLeft: 4 }}>{item.content}</span>
                                         ) : item.msgType === 'image' ? (
-                                                <Image
-                                                    src={item.content}
-                                                    alt="图片消息"
-                                                    style={{ maxWidth: 200, borderRadius: 8 }}
-                                                    preview={{
-                                                        mask: '点击预览',
-                                                    }}
-                                                    placeholder
-                                                />
+                                            <Image
+                                                src={item.content}
+                                                alt="图片消息"
+                                                style={{ maxWidth: 200, borderRadius: 8 }}
+                                                preview={{
+                                                    mask: '点击预览',
+                                                }}
+                                                placeholder
+                                            />
                                         ) : (
                                             <span>{item.content}</span>
                                         )}
                                     </div>
-                                    
+
                                     {/* 消息时间和已读状态 */}
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                         {item.sender === 'me' && (
@@ -342,19 +393,19 @@ export default function ChatPage() {
                                                 <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
                                             )
                                         )}
-                                        
+
                                         <Text type="secondary" style={{ fontSize: '0.75em' }}>
                                             {item.timestamp}
                                         </Text>
-                                        
+
                                     </div>
-                                    
+
                                 </Space>
                             </Popover>
 
                             {/* 自己头像 */}
                             {item.sender === 'me' && <Avatar src={myAvatar} />}
-                            
+
 
                         </List.Item>
                     )}
@@ -377,12 +428,12 @@ export default function ChatPage() {
                         autoSize={{ minRows: 1, maxRows: 3 }}
                         placeholder="输入消息..."
                     />
-                    
+
                     {/* 表情按钮 */}
                     <Popover content={emojiContent} trigger="click">
                         <Button icon={<SmileOutlined />} />
                     </Popover>
-                    
+
                     {/* 图片按钮 */}
                     <Button
                         icon={<PictureOutlined />}
@@ -416,13 +467,29 @@ export default function ChatPage() {
                             input.click();
                         }}
                     />
-                    
+
                     {/* 发送按钮 */}
-                    <Button type="primary" icon={<SendOutlined />} onClick={ handleSend }>
+                    <Button type="primary" icon={<SendOutlined />} onClick={handleSend}>
                         发送
                     </Button>
                 </Space.Compact>
             </Footer>
+            <Drawer
+                title="群聊管理"
+                placement="right"
+                closable
+                onClose={closeDrawer}
+                open={drawerOpen}
+                width={320}
+            >
+                {/* 这里可以添加你的群聊管理内容，比如成员列表、添加成员等 */}
+                <p>群聊 ID: {groupId}</p>
+                <p>群聊名称: {groupname}</p>
+                <p>群成员管理功能开发中...</p>
+                <Button type="primary" onClick={handleleavegroup}>
+                    退出群聊
+                </Button>
+            </Drawer>
         </Layout>
     );
 }
