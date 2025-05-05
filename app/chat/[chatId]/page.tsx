@@ -141,7 +141,7 @@ export default function ChatPage() {
                         msgType: msg.msg_type as MsgType,
                         content:
                             msg.msg_type === 'image'
-                                ? `https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${msg.content}`
+                                ? `${msg.content}`
                                 : msg.content,
                         timestamp: new Date(msg.created_at * 1000).toLocaleString(),
                         isRead: msg.is_read,
@@ -198,8 +198,9 @@ export default function ChatPage() {
                         isRead: msg.is_read,
                         readBy: msg.read_by,
                     };
-
-                    setMessages((prev) => [...prev, newMessage]);
+                    // 新消息插到前面
+                    setMessages(prev => [newMessage, ...prev]);
+                    // setMessages((prev) => [...prev, newMessage]);
                 }
             } catch (err) {
                 console.error('[WebSocket] 消息解析失败：', err);
@@ -340,7 +341,7 @@ export default function ChatPage() {
 
             <Content style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
                 <List
-                    dataSource={messages}
+                    dataSource={[...messages].reverse()}  // ✅ 注意：不要直接 reverse(messages)，要复制一份
                     renderItem={(item) => (
                         <List.Item
                             style={{
