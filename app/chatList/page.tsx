@@ -1,124 +1,221 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { List, Avatar, Tabs, Badge, Button, Dropdown, MenuProps } from 'antd';
+import { List, Avatar, Tabs, Badge, Button, Dropdown, MenuProps, message } from 'antd';
 import {
-    MessageOutlined,
     TeamOutlined,
     PlusOutlined,
     EllipsisOutlined,
-    PushpinFilled,
     BellOutlined,
-    BellFilled
+    BellFilled,
+    UserOutlined
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import { useRouter } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import { RootState } from '../redux/store';
 
-interface ChatItem {
-    id: string;
-    name: string;
-    lastMessage: string;
-    time: string;
-    unread: number;
+interface Conversation {
+    conversation_id: number;
+    conversation_name: string;
+    is_group: boolean;
+    unread_count: number;
+    is_muted: boolean;
+    updated_at: string;
+    last_message?: string;
+    avatar?: string; // 新增可选头像字段
+    original_name?: string; // 新增字段，保存原始会话名称
+}
+
+interface UserResponse {
     avatar: string;
-    isGroup: boolean;
-    isPinned: boolean;  // 置顶状态
-    isMuted: boolean;   // 免打扰状态
+    // 其他用户信息字段...
+}
+
+interface ApiResponse {
+    code: number;
+    info: string;
+    conversations: Conversation[];
 }
 
 const ChatListPage: React.FC = () => {
     const router = useRouter();
+    const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
+    const token = localStorage.getItem("token"); // 获取当前用户的token
     const [activeTab, setActiveTab] = useState<string>('private');
-    const [chatList, setChatList] = useState<ChatItem[]>([]);
+    const [chatList, setChatList] = useState<Conversation[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
 
-    // 模拟数据加载
+    // 获取用户头像
+    const fetchUserAvatar = async (userName: string): Promise<string | undefined> => {
+        try {
+            const response = await fetch(`/api/user/${userName}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: token,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('获取头像失败');
+            }
+
+            const data: UserResponse = await response.json();
+            return data.avatar;
+        } catch (error) {
+            console.error('获取用户头像出错:', error);
+            return undefined;
+        }
+    };
+
+    // 处理私聊会话名称，提取对方用户名
+    const getPrivateChatPartner = (conversationName: string): string | null => {
+        if (!conversationName.includes(' ↔ ')) return null;
+        const names = conversationName.split(' ↔ ');
+        return names.find(name => name !== currentUser) || null;
+    };
+
+
+    // 获取并设置头像
+    const fetchAndSetAvatars = async (conversations: Conversation[]) => {
+        const updatedConversations = await Promise.all(
+            conversations.map(async (conv) => {
+                if (conv.is_group) {
+                    return { ...conv, avatar: undefined }; // 群聊使用默认图标
+                }
+
+                const partnerName = getPrivateChatPartner(conv.conversation_name);
+                if (!partnerName) {
+                    return { ...conv, avatar: undefined };
+                }
+
+                const avatar = await fetchUserAvatar(partnerName);
+                return { ...conv, avatar };
+            })
+        );
+
+        setChatList(updatedConversations);
+    };
+
+    const fetchConversations = async () => {
+        try {
+            if (!token) {
+                message.error('请先登录');
+                return;
+            }
+
+            setLoading(true);
+            const response = await fetch('/api/conversation_unread_counts/', {
+                method: 'GET',
+                headers: {
+                    Authorization: token,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data: ApiResponse = await response.json();
+            /*
+            if (data.code === 0) {
+                const processedConversations = data.conversations.map(conv => {
+                    // 保留原始名称用于获取头像
+                    const originalName = conv.conversation_name;
+
+                    if (!conv.is_group) {
+                        const names = originalName.split(' ↔ ');
+                        const friendName = names.find(name => name !== currentUser) || names[0];
+                        return {
+                            ...conv,
+                            conversation_name: friendName, // 显示用
+                            original_name: originalName   // 新增字段，用于获取头像
+                        };
+                    }
+                    return conv;
+                });
+
+                await fetchAndSetAvatars(processedConversations);
+            } else {
+                message.error(data.info || '获取聊天列表失败');
+            }
+            */
+            
+            if (data.code === 0) {
+                await fetchAndSetAvatars(data.conversations); // 获取并设置头像
+            } else {
+                message.error(data.info || '获取聊天列表失败');
+            }
+            
+
+        } catch (error) {
+            console.error('获取聊天列表出错:', error);
+            message.error('获取聊天列表失败');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const mockData: ChatItem[] = [
-            {
-                id: '1',
-                name: '张三',
-                lastMessage: '你好，最近怎么样？',
-                time: '10:30',
-                unread: 2,
-                avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-                isGroup: false,
-                isPinned: true,   // 置顶示例
-                isMuted: false
-            },
-            {
-                id: '2',
-                name: '李四',
-                lastMessage: '项目文档我已经发给你了',
-                time: '昨天',
-                unread: 0,
-                avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
-                isGroup: false,
-                isPinned: false,
-                isMuted: true    // 免打扰示例
-            },
-            {
-                id: '3',
-                name: '前端开发群',
-                lastMessage: '王五: 这个bug已经修复了',
-                time: '昨天',
-                unread: 5,
-                avatar: 'https://randomuser.me/api/portraits/lego/3.jpg',
-                isGroup: true,
-                isPinned: true,
-                isMuted: false
-            },
-            {
-                id: '4',
-                name: '产品讨论组',
-                lastMessage: '新版本需求讨论',
-                time: '周一',
-                unread: 0,
-                avatar: 'https://randomuser.me/api/portraits/lego/4.jpg',
-                isGroup: true,
-                isPinned: false,
-                isMuted: true
-            },
-        ];
+        if (token && currentUser) {
+            fetchConversations();
+        }
+    }, [token, currentUser]); // 当token变化时重新获取数据
 
-        setChatList(mockData);
-    }, []);
-
-    // 处理置顶状态切换
-    const handlePinToggle = (chatId: string, e: React.MouseEvent) => {
+    const handleMuteToggle = async (conversationId: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        setChatList(prev => prev.map(item =>
-            item.id === chatId ? { ...item, isPinned: !item.isPinned } : item
-        ));
+        try {
+            const response = await fetch(`/api/conversations/${conversationId}/mute/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: token,
+                },
+                body: JSON.stringify({
+                    is_muted: !chatList.find(c => c.conversation_id === conversationId)?.is_muted
+                }),
+            });
+
+            if (response.ok) {
+                fetchConversations(); // 刷新列表
+                message.success('免打扰设置已更新');
+            } else {
+                message.error('更新免打扰状态失败');
+            }
+            
+        } catch (error) {
+            console.error('更新免打扰状态出错:', error);
+            message.error('操作失败');
+        }
     };
 
-    // 处理免打扰状态切换
-    const handleMuteToggle = (chatId: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setChatList(prev => prev.map(item =>
-            item.id === chatId ? { ...item, isMuted: !item.isMuted } : item
-        ));
+    const handleChatItemClick = (conversationId: number) => {
+        router.push(`/chat/${conversationId}`);
     };
 
-    // 处理聊天项点击
-    const handleChatItemClick = (chatId: string) => {
-        router.push(`/chat/${chatId}`);
+    const formatTime = (isoString: string) => {
+        const date = new Date(isoString);
+        const now = new Date();
+
+        if (date.toDateString() === now.toDateString()) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (date.toDateString() === yesterday.toDateString()) {
+            return '昨天';
+        }
+
+        return date.toLocaleDateString();
     };
 
-    // 排序聊天列表：置顶的排在前面
-    const sortedChatList = [...chatList].sort((a, b) => {
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        return 0;
-    });
-
-    // 过滤聊天列表
-    const filteredChatList = sortedChatList.filter(chat => {
+    const filteredChatList = chatList.filter(chat => {
         return activeTab === 'all' ||
-            (activeTab === 'private' && !chat.isGroup) ||
-            (activeTab === 'group' && chat.isGroup);
+            (activeTab === 'private' && !chat.is_group) ||
+            (activeTab === 'group' && chat.is_group);
     });
 
-    // 下拉菜单项
     const items: MenuProps['items'] = [
         {
             key: '1',
@@ -130,7 +227,6 @@ const ChatListPage: React.FC = () => {
         },
     ];
 
-    // 标签页配置
     const tabItems: TabsProps['items'] = [
         {
             key: 'all',
@@ -148,7 +244,6 @@ const ChatListPage: React.FC = () => {
 
     return (
         <div className="chat-list-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-            {/* 头部标题和操作 */}
             <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>聊天</h2>
                 <Dropdown menu={{ items }} trigger={['click']}>
@@ -156,7 +251,6 @@ const ChatListPage: React.FC = () => {
                 </Dropdown>
             </div>
 
-            {/* 标签页 */}
             <Tabs
                 activeKey={activeTab}
                 onChange={setActiveTab}
@@ -164,22 +258,23 @@ const ChatListPage: React.FC = () => {
                 style={{ padding: '0 16px' }}
             />
 
-            {/* 聊天列表 */}
             <div style={{ flex: 1, overflow: 'auto' }}>
                 <List
+                    loading={loading}
                     dataSource={filteredChatList}
                     renderItem={(item) => (
                         <List.Item
-                            key={item.id}
+                            key={item.conversation_id}
                             style={{
                                 padding: '12px 16px',
                                 cursor: 'pointer',
-                                backgroundColor: item.unread > 0 ? '#f9f9f9' : 'transparent',
-                                borderLeft: item.isPinned ? '3px solid #1890ff' : 'none'
+                                backgroundColor: item.unread_count > 0 ? '#f9f9f9' : 'transparent',
                             }}
-                            onClick={() => handleChatItemClick(item.id)}
+                            onClick={() => handleChatItemClick(item.conversation_id)}
                             actions={[
-                                <div key="time" style={{ color: '#999', fontSize: 12 }}>{item.time}</div>,
+                                <div key="time" style={{ color: '#999', fontSize: 12 }}>
+                                    {formatTime(item.updated_at)}
+                                </div>,
                                 <Button
                                     key="more"
                                     type="text"
@@ -190,47 +285,32 @@ const ChatListPage: React.FC = () => {
                         >
                             <List.Item.Meta
                                 avatar={
-                                    <div style={{ position: 'relative' }}>
-                                        <Avatar
-                                            src={item.avatar}
-                                            icon={item.isGroup ? <TeamOutlined /> : <MessageOutlined />}
-                                        />
-                                        {item.isPinned && (
-                                            <PushpinFilled
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: -5,
-                                                    right: -5,
-                                                    color: '#1890ff',
-                                                    fontSize: 12,
-                                                    background: 'white',
-                                                    borderRadius: '50%',
-                                                    padding: 2
-                                                }}
-                                            />
-                                        )}
-                                    </div>
+                                    <Avatar
+                                        src={item.avatar} // 使用获取到的头像
+                                        icon={item.is_group ? <TeamOutlined /> : <UserOutlined />}
+                                        style={{ backgroundColor: item.is_group ? '#1890ff' : '#7265e6' }}
+                                    />
                                 }
                                 title={
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>{item.name}</span>
+                                        <span>{item.conversation_name}</span>
                                         <div>
-                                            {item.isMuted ? (
+                                            {item.is_muted ? (
                                                 <BellOutlined
                                                     style={{ color: '#999', marginRight: 8 }}
-                                                    onClick={(e) => handleMuteToggle(item.id, e)}
+                                                    onClick={(e) => handleMuteToggle(item.conversation_id, e)}
                                                 />
                                             ) : (
                                                 <BellFilled
                                                     style={{ color: '#1890ff', marginRight: 8 }}
-                                                    onClick={(e) => handleMuteToggle(item.id, e)}
+                                                    onClick={(e) => handleMuteToggle(item.conversation_id, e)}
                                                 />
                                             )}
-                                            {item.unread > 0 && (
+                                            {item.unread_count > 0 && (
                                                 <Badge
-                                                    count={item.unread}
+                                                    count={item.unread_count}
                                                     style={{
-                                                        backgroundColor: item.isMuted ? '#d9d9d9' : '#1890ff'
+                                                        backgroundColor: item.is_muted ? '#d9d9d9' : '#1890ff'
                                                     }}
                                                 />
                                             )}
@@ -243,10 +323,10 @@ const ChatListPage: React.FC = () => {
                                             whiteSpace: 'nowrap',
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
-                                            color: item.unread > 0 ? '#000' : '#999'
+                                            color: item.unread_count > 0 ? '#000' : '#999'
                                         }}
                                     >
-                                        {item.lastMessage}
+                                        {item.last_message || `最后更新: ${formatTime(item.updated_at)}`}
                                     </div>
                                 }
                             />
