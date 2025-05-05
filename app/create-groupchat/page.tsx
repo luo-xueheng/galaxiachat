@@ -70,10 +70,14 @@ const Page = () => {
             if (data.action === "conversation_created" && data.success) {
                 console.log("群聊创建成功", data);
                 const conversationId = data.conversation.id;
-                localStorage.setItem("currentChatGroupId", conversationId);
-                localStorage.setItem("isGroupChat", "true");
-                localStorage.setItem("currentChatGroupName", groupname);
-                router.push(`/chat/${conversationId}`);
+                // localStorage.setItem("currentChatGroupId", conversationId);
+                // localStorage.setItem("isGroupChat", "true");
+                // localStorage.setItem("currentChatGroupName", groupname);
+                router.push(`/chat/${conversationId}?${new URLSearchParams({
+                    isGroupChat: "true",
+                    currentChatGroupName: groupname,
+                }).toString()
+                    }`);
                 ws.close();
             } else {
                 message.error("创建会话失败");

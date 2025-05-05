@@ -369,8 +369,10 @@ const Page = () => {
       const data = JSON.parse(event.data);
       if (data.action === "conversation_created" && data.success) {
         const conversationId = data.conversation.id;
-        localStorage.setItem("currentChatFriendUserName", friendUserName);
-        router.push(`/chat/${conversationId}`);
+        router.push(`/chat/${conversationId}?${new URLSearchParams({
+          currentChatFriendUserName: friendUserName,
+        }).toString()
+          }`);
         ws.close();
       } else {
         message.error("创建会话失败");
