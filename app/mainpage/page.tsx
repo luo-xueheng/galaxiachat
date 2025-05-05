@@ -369,8 +369,11 @@ const Page = () => {
       const data = JSON.parse(event.data);
       if (data.action === "conversation_created" && data.success) {
         const conversationId = data.conversation.id;
-        localStorage.setItem("currentChatFriendUserName", friendUserName);
-        router.push(`/chat/${conversationId}`);
+        router.push(`/chat/${conversationId}?${new URLSearchParams({
+          currentChatFriendUserName: friendUserName,
+        }).toString()
+          }`);
+
         ws.close();
       } else {
         message.error("创建会话失败");
@@ -462,7 +465,8 @@ const Page = () => {
         <Button onClick={() => router.push("/signout")}>signout</Button>
         <Button onClick={() => router.push("/searchuser")}>searchuser</Button>
         <Button onClick={() => router.push("/chatList")}>Go to Chat List</Button>
-        
+        <Button onClick={() => router.push("/create-groupchat")}>creategroupchat</Button>
+
         {/* 自动推到最右边 */}
         <div style={{ marginLeft: "auto" }}>
           <Button
@@ -473,7 +477,7 @@ const Page = () => {
             Edit profile
           </Button>
         </div>
-        
+
       </Flex>
       <Flex gap="middle" style={{ marginTop: 16 }}>
         <div>

@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image } from 'antd';
 import { SmileOutlined, PictureOutlined } from '@ant-design/icons';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
-
+import { Drawer } from 'antd';
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
+import { BACKEND_URL } from "../../constants/string";
+import { useRouter } from 'next/navigation';
+
 
 const emojiList = ['😊', '😂', '🥰', '👍', '🎉', '😢', '😡', '❤️', '👏']; // 表情列表
 
@@ -25,15 +28,32 @@ interface ChatMessage {
 }
 
 export default function ChatPage() {
+    const params = useParams();
+    const searchParams = useSearchParams();
+
 
     const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
     const currentUserToken = localStorage.getItem("token"); // 获取当前用户的token
-    const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
+    // const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
+    // const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
+    // const groupname = localStorage.getItem("currentChatGroupName"); // 获取当前群聊的名称
+    // const groupId = localStorage.getItem("currentChatGroupId"); // 获取当前群聊的ID
+    // const isGroupChat = localStorage.getItem("isGroupChat"); // 判断是否是群聊
+    const friendUserName = searchParams.get("currentChatFriendUserName"); // 获取当前用户的用户名
+    const groupname = searchParams.get("currentChatGroupName"); // 获取当前群聊的名称
+    // const groupId = searchParams.get("currentChatGroupId"); // 获取当前群聊的ID
+    const isGroupChat = searchParams.get("isGroupChat"); // 判断是否是群聊
+    const { chatId } = useParams(); // 获取路由中的chatId
+    const groupId = chatId;
 
     console.log("当前用户: ", currentUser);
     console.log("当前用户token: ", currentUserToken);
     console.log("好友: ", friendUserName);
+    const [drawerOpen, setDrawerOpen] = useState(false);
 
+    const showDrawer = () => setDrawerOpen(true);
+    const closeDrawer = () => setDrawerOpen(false);
+    const router = useRouter();
     /*
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
@@ -58,7 +78,7 @@ export default function ChatPage() {
         },
     ]);
     */
-    
+
     const [input, setInput] = useState('');
     const messageEndRef = useRef<HTMLDivElement>(null);
 
@@ -103,10 +123,9 @@ export default function ChatPage() {
         fetchAvatars();
     }, [friendUserName, currentUser, currentUserToken]);
 
-    const { chatId } = useParams(); // 获取路由中的chatId
     const [messages, setMessages] = useState<ChatMessage[]>([]); // 初始化为空数组
     const [socket, setSocket] = useState<WebSocket | null>(null);
-    
+
     // ✅ 拉取历史消息
     useEffect(() => {
         if (!chatId || !currentUser || !currentUserToken) return;
@@ -222,7 +241,7 @@ export default function ChatPage() {
             ws.close();
         };
     }, [chatId, currentUserToken, currentUser]);
-    
+
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
@@ -332,12 +351,50 @@ export default function ChatPage() {
 
         input.click();
     };
+    const handleleavegroup = () => {
+        const token = localStorage.getItem("token");
+        console.log("当前groupid", groupId)
+        fetch(`${BACKEND_URL}/api/leave-groups`, {
+            method: "POST",
+            headers: {
+                Authorization: `${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                group_id: groupId,
+            }),
+        })
+            .then((res) => res.json())
+            .then((res) => {
+                if (Number(res.code) === 0) {
+                    alert("退出群聊成功");
+                    // localStorage.removeItem("currentGroupId");
+                    // localStorage.removeItem("currentChatGroupName");
+                    // localStorage.removeItem("isGroupChat");
+                    router.push("/mainpage");
+                }
+                else {
+                    console.log("退出群聊失败", res);
+                }
+            })
+    };
 
     return (
         <Layout style={{ height: '100vh' }}>
             <Header style={{ background: '#fff', padding: '0 16px' }}>
-                <Text strong>{friendUserName}</Text>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text strong>
+                        {isGroupChat === 'true' ? groupname : friendUserName}
+                    </Text>
+
+                    {isGroupChat === 'true' && (
+                        <Button type="link" onClick={showDrawer}>
+                            群聊管理
+                        </Button>
+                    )}
+                </div>
             </Header>
+
 
             <Content style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
                 <List
@@ -481,6 +538,23 @@ export default function ChatPage() {
                     </Button>
                 </Space.Compact>
             </Footer>
+            <Drawer
+                title="群聊管理"
+                placement="right"
+                closable
+                onClose={closeDrawer}
+                open={drawerOpen}
+                width={320}
+            >
+                {/* 这里可以添加你的群聊管理内容，比如成员列表、添加成员等 */}
+                <p>群聊 ID: {groupId}</p>
+                <p>群聊名称: {groupname}</p>
+                <p>群成员管理功能开发中...</p>
+                <Button type="primary" onClick={handleleavegroup}>
+                    退出群聊
+                </Button>
+            </Drawer>
+
         </Layout>
     );
 }
