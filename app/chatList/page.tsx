@@ -134,30 +134,55 @@ export default function ChatListPage() {
     }, [token, currentUser]);
 
     const handleMuteToggle = async (conversationId: number, e: React.MouseEvent) => {
-        const token = localStorage.getItem("token"); // 获取当前用户的token
         e.stopPropagation();
+
         try {
-            const response = await fetch(`/api/conversations/${conversationId}/mute/`, {
+            const userName = currentUser;
+            const currentConversation = chatList.find(c => c.conversation_id === conversationId);
+
+            if (!userName || !currentConversation) {
+                message.error('用户信息获取失败');
+                return;
+            }
+
+            // 转换布尔值为首字母大写的字符串
+            const muteStatus = !currentConversation.is_muted;
+            const muteStatusString = muteStatus ? "True" : "False"; // 关键修改点
+
+            const response = await fetch('/api/set_mute_conversation', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: token,
                 },
                 body: JSON.stringify({
-                    is_muted: !chatList.find(c => c.conversation_id === conversationId)?.is_muted
+                    userName: userName,
+                    conversation_id: conversationId.toString(),
+                    mute_notifications: muteStatusString // 使用转换后的值
                 }),
             });
 
-            if (response.ok) {
-                fetchConversations(); // 刷新列表
-                message.success('免打扰设置已更新');
-            } else {
-                message.error('更新免打扰状态失败');
+            // 调试输出响应
+            if (process.env.NODE_ENV === 'development') {
+                const responseClone = response.clone(); // 克隆response以便多次读取
+                console.log('响应状态:', response.status);
+                console.log('响应内容:', await responseClone.json());
             }
 
+            if (response.ok) {
+                setChatList(prev => prev.map(conv =>
+                    conv.conversation_id === conversationId
+                        ? { ...conv, is_muted: muteStatus } // 使用原始布尔值更新状态
+                        : conv
+                ));
+                alert(`已${currentConversation.is_muted ? '取消' : '设置'}【${currentConversation.conversation_name}】的免打扰`);
+            } else {
+                const errorData = await response.json();
+                message.error(errorData.info || '操作失败');
+            }
         } catch (error) {
-            console.error('更新免打扰状态出错:', error);
-            message.error('操作失败');
+            console.error('操作失败:', error);
+            message.error('网络请求异常');
         }
     };
 
