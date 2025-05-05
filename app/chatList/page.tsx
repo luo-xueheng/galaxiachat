@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { List, Avatar, Tabs, Badge, Button, Dropdown, MenuProps, message } from 'antd';
+import { List, Avatar, Tabs, Badge, Button, Dropdown, MenuProps, message, Space } from 'antd';
 import {
     TeamOutlined,
     PlusOutlined,
     EllipsisOutlined,
     BellOutlined,
     BellFilled,
-    UserOutlined
+    UserOutlined,
+    PushpinFilled,
+    PushpinOutlined
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import { useRouter } from 'next/navigation';
@@ -19,6 +21,7 @@ interface Conversation {
     is_group: boolean;
     unread_count: number;
     is_muted: boolean;
+    is_pinned: boolean;
     updated_at: string;
     last_message?: string;
     avatar?: string;
@@ -133,6 +136,7 @@ export default function ChatListPage() {
         if (token) fetchConversations();
     }, [token, currentUser]);
 
+    // 处理免打扰状态切换
     const handleMuteToggle = async (conversationId: number, e: React.MouseEvent) => {
         e.stopPropagation();
 
@@ -186,6 +190,69 @@ export default function ChatListPage() {
         }
     };
 
+    // 处理置顶状态切换
+    const handlePinToggle = async (conversationId: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+
+        try {
+            const userName = currentUser; // 从组件state获取
+            const currentConversation = chatList.find(c => c.conversation_id === conversationId);
+
+            if (!userName || !currentConversation) {
+                message.error('用户信息获取失败');
+                return;
+            }
+
+            // 构建请求body（注意首字母大写的布尔值）
+            const pinStatus = !currentConversation.is_pinned;
+            const requestBody = {
+                userName: userName,
+                conversation_id: conversationId.toString(),
+                is_pinned: pinStatus ? "True" : "False" // 注意首字母大写
+            };
+
+            // 调试用（开发环境打印）
+            if (process.env.NODE_ENV === 'development') {
+                console.log('置顶请求参数:', requestBody);
+            }
+
+            const response = await fetch('/api/set_pin_conversation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: token,
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            if (response.ok) {
+                // 更新本地状态 + 排序
+                setChatList(prev => {
+                    const updated = prev.map(conv =>
+                        conv.conversation_id === conversationId
+                            ? { ...conv, is_pinned: pinStatus }
+                            : conv
+                    );
+                    // 置顶项排序到前面
+                    return [...updated].sort((a, b) =>
+                        (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0)
+                    );
+                });
+
+                message.success(
+                    `已${currentConversation.is_pinned ? '取消' : '设置'}【${currentConversation.conversation_name}】置顶`
+                );
+            } else {
+                const errorData = await response.json();
+                message.error(errorData.info || '置顶操作失败');
+            }
+        } catch (error) {
+            console.error('置顶操作异常:', error);
+            message.error('网络请求失败');
+        }
+    };
+
+
     const handleChatItemClick = (conversationId: number) => {
         router.push(`/chat/${conversationId}`);
     };
@@ -224,6 +291,7 @@ export default function ChatListPage() {
 
     return (
         <div className="chat-list-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+            {/* 头部保持不变 */}
             <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>聊天</h2>
                 <Dropdown menu={{ items }} trigger={['click']}>
@@ -249,52 +317,65 @@ export default function ChatListPage() {
                                 padding: '12px 16px',
                                 cursor: 'pointer',
                                 backgroundColor: item.unread_count > 0 ? '#f9f9f9' : 'transparent',
+                                borderLeft: item.is_pinned ? '3px solid #1890ff' : 'none', // 置顶标识
+                                background: item.is_pinned ? '#f6f9ff' : 'inherit' // 置顶背景色
                             }}
                             onClick={() => handleChatItemClick(item.conversation_id)}
                             actions={[
                                 <div key="time" style={{ color: '#999', fontSize: 12 }}>
                                     {formatTime(item.updated_at)}
                                 </div>,
-                                <Button
-                                    key="more"
-                                    type="text"
-                                    icon={<EllipsisOutlined />}
-                                    onClick={(e) => e.stopPropagation()}
-                                />
+                                <Space key="actions" size={8}>
+                                    <Button
+                                        type="text"
+                                        icon={item.is_pinned ? <PushpinFilled style={{ color: '#1890ff' }} /> : <PushpinOutlined />}
+                                        onClick={(e) => handlePinToggle(item.conversation_id, e)}
+                                    />
+                                    <Button
+                                        type="text"
+                                        icon={item.is_muted ? <BellOutlined style={{ color: '#999' }} /> : <BellFilled style={{ color: '#1890ff' }} />}
+                                        onClick={(e) => handleMuteToggle(item.conversation_id, e)}
+                                    />
+                                    <Button
+                                        type="text"
+                                        icon={<EllipsisOutlined />}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                </Space>
                             ]}
                         >
                             <List.Item.Meta
                                 avatar={
-                                    <Avatar
-                                        src={item.avatar} // 使用获取到的头像
-                                        icon={item.is_group ? <TeamOutlined /> : <UserOutlined />}
-                                        style={{ backgroundColor: item.is_group ? '#1890ff' : '#7265e6' }}
-                                    />
+                                    <Badge
+                                        dot={item.is_pinned}
+                                        offset={[-10, 30]}
+                                        color="#1890ff"
+                                    >
+                                        <Avatar
+                                            src={item.avatar}
+                                            icon={item.is_group ? <TeamOutlined /> : <UserOutlined />}
+                                            style={{
+                                                backgroundColor: item.is_group ? '#1890ff' : '#7265e6',
+                                            }}
+                                        />
+                                    </Badge>
                                 }
                                 title={
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>{item.conversation_name}</span>
-                                        <div>
-                                            {item.is_muted ? (
-                                                <BellOutlined
-                                                    style={{ color: '#999', marginRight: 8 }}
-                                                    onClick={(e) => handleMuteToggle(item.conversation_id, e)}
-                                                />
-                                            ) : (
-                                                <BellFilled
-                                                    style={{ color: '#1890ff', marginRight: 8 }}
-                                                    onClick={(e) => handleMuteToggle(item.conversation_id, e)}
-                                                />
+                                        <span style={{ fontWeight: item.is_pinned ? 500 : 'normal' }}>
+                                            {item.conversation_name}
+                                            {item.is_pinned && (
+                                                <span style={{ marginLeft: 8, color: '#1890ff', fontSize: 12 }}>[置顶]</span>
                                             )}
-                                            {item.unread_count > 0 && (
-                                                <Badge
-                                                    count={item.unread_count}
-                                                    style={{
-                                                        backgroundColor: item.is_muted ? '#d9d9d9' : '#1890ff'
-                                                    }}
-                                                />
-                                            )}
-                                        </div>
+                                        </span>
+                                        {item.unread_count > 0 && (
+                                            <Badge
+                                                count={item.unread_count}
+                                                style={{
+                                                    backgroundColor: item.is_muted ? '#d9d9d9' : '#1890ff'
+                                                }}
+                                            />
+                                        )}
                                     </div>
                                 }
                                 description={
@@ -303,7 +384,8 @@ export default function ChatListPage() {
                                             whiteSpace: 'nowrap',
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
-                                            color: item.unread_count > 0 ? '#000' : '#999'
+                                            color: item.unread_count > 0 ? '#000' : '#999',
+                                            fontWeight: item.is_pinned ? 500 : 'normal'
                                         }}
                                     >
                                         {item.last_message || `最后更新: ${formatTime(item.updated_at)}`}
