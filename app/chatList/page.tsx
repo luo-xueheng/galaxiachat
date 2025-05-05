@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { List, Avatar, Tabs, Badge, Button, Dropdown, MenuProps, message } from 'antd';
 import {
     TeamOutlined,
@@ -12,8 +12,6 @@ import {
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import { useRouter } from 'next/navigation';
-import { useSelector } from 'react-redux';
-import { RootState } from '../redux/store';
 
 interface Conversation {
     conversation_id: number;
@@ -23,31 +21,26 @@ interface Conversation {
     is_muted: boolean;
     updated_at: string;
     last_message?: string;
-    avatar?: string; // 新增可选头像字段
-    original_name?: string; // 新增字段，保存原始会话名称
+    avatar?: string;
 }
 
-interface UserResponse {
-    avatar: string;
-    // 其他用户信息字段...
-}
-
-interface ApiResponse {
-    code: number;
-    info: string;
-    conversations: Conversation[];
-}
-
-const ChatListPage: React.FC = () => {
+export default function ChatListPage() {
     const router = useRouter();
-    const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
-    const token = localStorage.getItem("token"); // 获取当前用户的token
-    const [activeTab, setActiveTab] = useState<string>('private');
+    const [currentUser, setCurrentUser] = useState('');
+    const [token, setToken] = useState('');
+    const [activeTab, setActiveTab] = useState('private');
     const [chatList, setChatList] = useState<Conversation[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
+    const [loading, setLoading] = useState(true);
+
+    // 安全获取 localStorage
+    useEffect(() => {
+        setCurrentUser(localStorage.getItem('userName') || '');
+        setToken(localStorage.getItem('token') || '');
+    }, []);
 
     // 获取用户头像
     const fetchUserAvatar = async (userName: string): Promise<string | undefined> => {
+        const token = localStorage.getItem("token"); // 获取当前用户的token
         try {
             const response = await fetch(`/api/user/${userName}`, {
                 method: 'GET',
@@ -60,7 +53,7 @@ const ChatListPage: React.FC = () => {
                 throw new Error('获取头像失败');
             }
 
-            const data: UserResponse = await response.json();
+            const data = await response.json();
             return data.avatar;
         } catch (error) {
             console.error('获取用户头像出错:', error);
@@ -70,12 +63,12 @@ const ChatListPage: React.FC = () => {
 
     // 处理私聊会话名称，提取对方用户名
     const getPrivateChatPartner = (conversationName: string): string | null => {
+        const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
         if (!conversationName.includes(' ↔ ')) return null;
         const names = conversationName.split(' ↔ ');
         return names.find(name => name !== currentUser) || null;
     };
-
-
+    
     // 获取并设置头像
     const fetchAndSetAvatars = async (conversations: Conversation[]) => {
         const updatedConversations = await Promise.all(
@@ -98,71 +91,50 @@ const ChatListPage: React.FC = () => {
     };
 
     const fetchConversations = async () => {
-        try {
-            if (!token) {
-                message.error('请先登录');
-                return;
-            }
+        if (!token) {
+            message.error('请先登录');
+            return;
+        }
 
+        try {
             setLoading(true);
             const response = await fetch('/api/conversation_unread_counts/', {
                 method: 'GET',
-                headers: {
-                    Authorization: token,
-                },
+                headers: { Authorization: token },
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data: ApiResponse = await response.json();
-            /*
-            if (data.code === 0) {
-                const processedConversations = data.conversations.map(conv => {
-                    // 保留原始名称用于获取头像
-                    const originalName = conv.conversation_name;
-
-                    if (!conv.is_group) {
-                        const names = originalName.split(' ↔ ');
-                        const friendName = names.find(name => name !== currentUser) || names[0];
-                        return {
-                            ...conv,
-                            conversation_name: friendName, // 显示用
-                            original_name: originalName   // 新增字段，用于获取头像
-                        };
-                    }
-                    return conv;
-                });
-
-                await fetchAndSetAvatars(processedConversations);
-            } else {
-                message.error(data.info || '获取聊天列表失败');
-            }
-            */
-            
+            const data = await response.json();
             if (data.code === 0) {
                 await fetchAndSetAvatars(data.conversations); // 获取并设置头像
             } else {
                 message.error(data.info || '获取聊天列表失败');
             }
-            
-
+            /*
+            if (data.code === 0) {
+                const processed = data.conversations.map((conv: Conversation) => ({
+                    ...conv,
+                    conversation_name: conv.is_group
+                        ? conv.conversation_name
+                        : conv.conversation_name.split(' ↔ ')
+                            .find(name => name.trim() !== currentUser)
+                        || conv.conversation_name
+                }));
+                setChatList(processed);
+            }
+            */
         } catch (error) {
-            console.error('获取聊天列表出错:', error);
-            message.error('获取聊天列表失败');
+            message.error('获取列表失败');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (token && currentUser) {
-            fetchConversations();
-        }
-    }, [token, currentUser]); // 当token变化时重新获取数据
+        if (token) fetchConversations();
+    }, [token, currentUser]);
 
     const handleMuteToggle = async (conversationId: number, e: React.MouseEvent) => {
+        const token = localStorage.getItem("token"); // 获取当前用户的token
         e.stopPropagation();
         try {
             const response = await fetch(`/api/conversations/${conversationId}/mute/`, {
@@ -182,7 +154,7 @@ const ChatListPage: React.FC = () => {
             } else {
                 message.error('更新免打扰状态失败');
             }
-            
+
         } catch (error) {
             console.error('更新免打扰状态出错:', error);
             message.error('操作失败');
@@ -191,23 +163,6 @@ const ChatListPage: React.FC = () => {
 
     const handleChatItemClick = (conversationId: number) => {
         router.push(`/chat/${conversationId}`);
-    };
-
-    const formatTime = (isoString: string) => {
-        const date = new Date(isoString);
-        const now = new Date();
-
-        if (date.toDateString() === now.toDateString()) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (date.toDateString() === yesterday.toDateString()) {
-            return '昨天';
-        }
-
-        return date.toLocaleDateString();
     };
 
     const filteredChatList = chatList.filter(chat => {
@@ -338,4 +293,21 @@ const ChatListPage: React.FC = () => {
     );
 };
 
-export default ChatListPage;
+
+// 辅助函数
+const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = new Date();
+
+    if (date.toDateString() === now.toDateString()) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+        return '昨天';
+    }
+
+    return date.toLocaleDateString();
+};
