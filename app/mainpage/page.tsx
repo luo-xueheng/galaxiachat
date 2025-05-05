@@ -461,6 +461,7 @@ const Page = () => {
         </Button>
         <Button onClick={() => router.push("/signout")}>signout</Button>
         <Button onClick={() => router.push("/searchuser")}>searchuser</Button>
+        <Button onClick={() => router.push("/chatList")}>Go to Chat List</Button>
         
         {/* 自动推到最右边 */}
         <div style={{ marginLeft: "auto" }}>
