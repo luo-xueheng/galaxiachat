@@ -31,7 +31,7 @@ const EditProfilePage = () => {
                 const response = await fetch('/api/user_profile/?userName=' + username, {
                     method: 'GET',
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        Authorization: `${token}`,
                     },
                 });
 

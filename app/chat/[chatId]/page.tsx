@@ -294,33 +294,15 @@ export default function ChatPage() {
 
         input.click();
     };
+    const handleChatGroupManagement = () => {
+        const groupIdValue = Array.isArray(groupId) ? groupId[0] : groupId;
+        const query = new URLSearchParams({
+            isGroupChat: "true",
+            currentChatGroupName: groupname,
+            groupId: groupIdValue
+        }).toString();
 
-    const handleleavegroup = () => {
-        const token = localStorage.getItem("token");
-        console.log("当前groupid", groupId)
-        fetch(`${BACKEND_URL}/api/leave-groups`, {
-            method: "POST",
-            headers: {
-                Authorization: `${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                group_id: groupId,
-            }),
-        })
-            .then((res) => res.json())
-            .then((res) => {
-                if (Number(res.code) === 0) {
-                    alert("退出群聊成功");
-                    // localStorage.removeItem("currentGroupId");
-                    // localStorage.removeItem("currentChatGroupName");
-                    // localStorage.removeItem("isGroupChat");
-                    router.push("/mainpage");
-                }
-                else {
-                    console.log("退出群聊失败", res);
-                }
-            })
+        router.push(`/chatgroupmanagement?${query}`);
     };
 
     console.log("is group chat: ", isGroupChat);
@@ -334,7 +316,7 @@ export default function ChatPage() {
                     </Text>
 
                     {isGroupChat === 'true' && (
-                        <Button type="link" onClick={showDrawer}>
+                        <Button type="link" onClick={() => handleChatGroupManagement()} >
                             群聊管理
                         </Button>
                     )}
@@ -483,22 +465,6 @@ export default function ChatPage() {
                     </Button>
                 </Space.Compact>
             </Footer>
-            <Drawer
-                title="群聊管理"
-                placement="right"
-                closable
-                onClose={closeDrawer}
-                open={drawerOpen}
-                width={320}
-            >
-                {/* 这里可以添加你的群聊管理内容，比如成员列表、添加成员等 */}
-                <p>群聊 ID: {groupId}</p>
-                <p>群聊名称: {groupname}</p>
-                <p>群成员管理功能开发中...</p>
-                <Button type="primary" onClick={handleleavegroup}>
-                    退出群聊
-                </Button>
-            </Drawer>
         </Layout>
     );
 }
