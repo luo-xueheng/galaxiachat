@@ -71,7 +71,7 @@ export default function ChatListPage() {
         const names = conversationName.split(' ↔ ');
         return names.find(name => name !== currentUser) || null;
     };
-    
+
     // 获取并设置头像
     const fetchAndSetAvatars = async (conversations: Conversation[]) => {
         const updatedConversations = await Promise.all(
@@ -253,8 +253,26 @@ export default function ChatListPage() {
     };
 
 
-    const handleChatItemClick = (conversationId: number) => {
-        router.push(`/chat/${conversationId}`);
+    // const handleChatItemClick = (conversationId: number) => {
+    //     router.push(`/chat/${conversationId}?${new URLSearchParams({
+    //         isGroupChat: "true",
+    //         currentChatGroupName: groupname,
+    //     }).toString()
+    //         }`);
+    // };
+    const handlePrivateChatClick = (conversationId: number, conversationname: string) => {
+        const friendUserName = getPrivateChatPartner(conversationname);
+        router.push(`/chat/${conversationId}?${new URLSearchParams({
+            currentChatFriendUserName: friendUserName,
+        }).toString()
+            }`);
+    };
+    const handleGroupChatClick = (conversationId: number, groupname: string) => {
+        router.push(`/chat/${conversationId}?${new URLSearchParams({
+            isGroupChat: "true",
+            currentChatGroupName: groupname,
+        }).toString()
+            }`);
     };
 
     const filteredChatList = chatList.filter(chat => {
@@ -320,7 +338,13 @@ export default function ChatListPage() {
                                 borderLeft: item.is_pinned ? '3px solid #1890ff' : 'none', // 置顶标识
                                 background: item.is_pinned ? '#f6f9ff' : 'inherit' // 置顶背景色
                             }}
-                            onClick={() => handleChatItemClick(item.conversation_id)}
+                            onClick={() => {
+                                if (item.is_group) {
+                                    handleGroupChatClick(item.conversation_id, item.conversation_name);
+                                } else {
+                                    handlePrivateChatClick(item.conversation_id, item.conversation_name);
+                                }
+                            }}
                             actions={[
                                 <div key="time" style={{ color: '#999', fontSize: 12 }}>
                                     {formatTime(item.updated_at)}

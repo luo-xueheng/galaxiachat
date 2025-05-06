@@ -103,16 +103,22 @@ export default function ChatPage() {
                     }
 
                     const data = await response.json();
+                    console.log(response)
                     console.log("用户头像获取成功", data.avatar);
                     return data.avatar;
                 };
-
                 const [myAvatar, friendAvatar] = await Promise.all([
                     fetchUserAvatar(currentUser!),
                     fetchUserAvatar(friendUserName as string),
+                    // fetchUserAvatar(currentUser),
+                    // fetchUserAvatar(friendUserName),
+                    console.log("当前用户", currentUser),
+                    console.log("当前好友", friendUserName),
                 ]);
+                console.log("当前用户头像", myAvatar),
+                    console.log("当前好友头像", friendAvatar),
 
-                setMyAvatar(myAvatar);
+                    setMyAvatar(myAvatar);
                 setFriendAvatar(friendAvatar);
 
             } catch (err) {
