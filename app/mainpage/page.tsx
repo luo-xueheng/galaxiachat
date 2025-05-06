@@ -463,6 +463,7 @@ const Page = () => {
         </Button>
         <Button onClick={() => router.push("/signout")}>signout</Button>
         <Button onClick={() => router.push("/searchuser")}>searchuser</Button>
+        <Button onClick={() => router.push("/chatList")}>Go to Chat List</Button>
         <Button onClick={() => router.push("/create-groupchat")}>creategroupchat</Button>
 
         {/* 自动推到最右边 */}
