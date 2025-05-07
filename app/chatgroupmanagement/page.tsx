@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import type { MenuProps } from 'antd';
 import { useSelector, useDispatch } from "react-redux";
 import { useParams, useSearchParams } from 'next/navigation';
@@ -16,6 +16,7 @@ import { BACKEND_URL } from "../constants/string";
 import { useRouter } from 'next/navigation';
 import { get } from 'http';
 import { group } from 'console';
+import { createSelectorCreator } from '@reduxjs/toolkit';
 
 type Friend = {
     userName: string;
@@ -63,6 +64,9 @@ export default function ChatPage() {
     const groupname = searchParams.get("currentChatGroupName"); // 获取当前群聊的名称
     const isGroupChat = searchParams.get("isGroupChat"); // 判断是否是群聊
     const groupId = searchParams.get("groupId"); // 获取当前群聊的id
+    const [adminList, setAdminList] = useState<string[]>([]);
+    const [creator, setcreator] = useState<string>(""); // 创建者
+    const [currentUserRole, setCurrentUserRole] = useState("member");
     // const { chatId } = useParams(); // 获取路由中的chatId
     // const groupId = chatId;
 
@@ -84,92 +88,7 @@ export default function ChatPage() {
     const [memberAvatar, setMemberAvatar] = useState<string | undefined>(undefined);
 
     const [socket, setSocket] = useState<WebSocket | null>(null);
-    // 示例成员列表（你可动态生成）
 
-    const removeMemberItems: MenuProps['items'] = [
-        { key: 'dave', label: 'Dave' },
-        { key: 'eve', label: 'Eve' },
-    ];
-    // 添加成员按钮
-    const AddMemberDropdown = () => (
-        <Dropdown
-            menu={{
-                items: friendOptions.map(({ label, value }) => ({
-                    key: value,
-                    label,
-                    value,
-                    type: 'item', // 添加了 'type' 属性
-                    onClick: async () => {
-                        try {
-                            if (ws && ws.readyState === WebSocket.OPEN) {
-                                ws.send(JSON.stringify({
-                                    action: "send_invite",
-                                    group_id: groupId,
-                                    invitee_name: value,
-
-                                }));
-                            } else {
-                                console.warn("⚠️ WebSocket 尚未连接");
-                            }
-
-                            ws.onmessage = (event) => {
-                                try {
-                                    const response = JSON.parse(event.data);
-                                    console.log("📤 发送申请响应：", event.data);
-
-                                    if (response.status === "success") {
-                                        alert(`好友请求已成功发送给 ${value}`);
-                                    }
-                                    if (response.status === "error" && response.code === "pending_invite_exists") {
-                                        alert(`给好友: ${value}的进群申请已存在，请勿重复发送`);
-                                    }
-                                } catch (e) {
-                                    console.error('解析响应失败:', e);
-                                    alert('处理服务器响应时出错');
-                                }
-                            };
-                        } catch (error) {
-                            console.error('添加好友失败:', error);
-                            alert('连接服务器失败，请稍后重试');
-                        }
-                    },
-                })),
-            }}
-            trigger={['click']}
-        >
-            <div style={{ textAlign: 'center', marginRight: 16 }}>
-                <Button
-                    icon={<UserAddOutlined style={{ fontSize: 24 }} />}
-                    style={{ width: 64, height: 64, padding: 0 }}
-                />
-                <div>
-                    添加成员 <DownOutlined />
-                </div>
-            </div>
-        </Dropdown>
-    );
-
-    // 删除成员按钮
-    const RemoveMemberDropdown = () => (
-        <Dropdown
-            menu={{
-                items: removeMemberItems,
-                selectable: true,
-                onClick: ({ key }) => alert(`移除成员：${key}`),
-            }}
-            trigger={['click']}
-        >
-            <div style={{ textAlign: 'center', marginRight: 16 }}>
-                <Button
-                    icon={<UserDeleteOutlined style={{ fontSize: 24 }} />}
-                    style={{ width: 64, height: 64, padding: 0 }}
-                />
-                <div>
-                    移除成员 <DownOutlined />
-                </div>
-            </div>
-        </Dropdown>
-    );
     //获取全部群成员
     const getGroupMembers = async () => {
         const token = localStorage.getItem("token");
@@ -184,20 +103,20 @@ export default function ChatPage() {
         console.log("获取群成员", data);
         const targetGroup = data.groups?.[groupId];
         console.log("当前群成员", targetGroup);
-        const creator: string | null = null;
-        const adminList: string[] = [];
-        const memberList: string[] = [];
-
+        const newAdminList: string[] = [];
+        const allGroupMembers: { username: string; role: string; avatar: string }[] = [];
+        let newcreator = ""
         // 处理管理员数组
-        for (const user of targetGroup.admins || []) {
+        for (const user of targetGroup.members || []) {
             if (user.role === "creator") {
-                const creator = user.username;
+                newcreator = user.username;
             } else if (user.role === "admin") {
-                adminList.push(user.username);
+                newAdminList.push(user.username);
             }
         }
 
-        const allGroupMembers: { username: string; role: string; avatar: string }[] = [];
+        const currentUserName = localStorage.getItem("userName");
+        let currentUserRole = "member"; // 默认是普通成员
 
 
         // 加入普通成员
@@ -207,10 +126,18 @@ export default function ChatPage() {
                 role: user.role, // 一般是 "member"
                 avatar: user.avatar || "",
             });
+            //判断当前用户身份
+            if (user.username === currentUserName) {
+                currentUserRole = user.role; // 'admin' 或 'member'
+            }
         }
 
         console.log("全部群成员（含角色）:", allGroupMembers);
+        setAdminList(newAdminList);
+        setcreator(newcreator);
         setGroupMembers(allGroupMembers);
+
+        setCurrentUserRole(currentUserRole);  // 存到状态里
     };
     const fetchFriends = async () => {
         const token = localStorage.getItem("token");
@@ -241,6 +168,115 @@ export default function ChatPage() {
             // message.error("请求好友列表失败");
         }
     };
+
+    // 添加成员按钮
+    const AddMemberDropdown = () => (
+        <Dropdown
+            menu={{
+                items: friendOptions.map(({ label, value }) => ({
+                    key: value,
+                    label,
+                    value,
+                    type: 'item', // 添加了 'type' 属性
+                    onClick: async (info) => {
+                        const invitee_name = info.key;
+                        try {
+                            if (ws && ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({
+                                    action: "send_invite",
+                                    group_id: groupId,
+                                    invitee_name: invitee_name,
+                                    inviter_name: currentUser,
+
+                                }));
+                            } else {
+                                console.warn("⚠️ WebSocket 尚未连接");
+                            }
+                        } catch (error) {
+                            console.error('添加好友失败:', error);
+                            alert('连接服务器失败，请稍后重试');
+                        }
+                    },
+                })),
+            }}
+            trigger={['click']}
+        >
+            <div style={{ textAlign: 'center', marginRight: 16 }}>
+                <Button
+                    icon={<UserAddOutlined style={{ fontSize: 24 }} />}
+                    style={{ width: 64, height: 64, padding: 0 }}
+                />
+                <div>
+                    添加成员 <DownOutlined />
+                </div>
+            </div>
+        </Dropdown>
+    );
+
+    // 删除成员的下拉菜单项
+    const removableMembers = groupMembers.filter(member => {
+        if (member.username === currentUser) return false; // 不能移除自己
+        if (currentUserRole === "creator") return true;    // 群主可移除任何人（除自己）
+        if (currentUserRole === "admin") {
+            return member.role === "member";               // 管理员只能移除普通成员
+        }
+        return false; // 普通成员不能移除任何人
+    });
+
+    const removeMemberItems: MenuProps['items'] = removableMembers.map(member => ({
+        key: member.username,
+        label: member.username,
+    }));
+    // 删除成员按钮
+    const RemoveMemberDropdown = () => (
+        <Dropdown
+            menu={{
+                items: removeMemberItems,
+                selectable: true,
+                onClick: async ({ key }) => {
+                    const confirm = window.confirm(`确认移除成员 ${key} 吗？`);
+                    if (!confirm) return;
+
+                    const token = localStorage.getItem("token");
+                    try {
+                        const res = await fetch(`${BACKEND_URL}/api/remove-member`, {
+                            method: "POST",
+                            headers: {
+                                Authorization: token,
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                userName: key,
+                                conversation_id: groupId,
+                            }),
+                        });
+                        const result = await res.json();
+                        if (result.code === 0) {
+                            alert("移除成功");
+                            getGroupMembers(); // 重新刷新成员列表
+                        } else {
+                            alert(`移除失败: ${result.message || "未知错误"}`);
+                        }
+                    } catch (err) {
+                        alert("请求失败，请稍后重试");
+                    }
+                }
+
+            }}
+            trigger={['click']}
+        >
+            <div style={{ textAlign: 'center', marginRight: 16 }}>
+                <Button
+                    icon={<UserDeleteOutlined style={{ fontSize: 24 }} />}
+                    style={{ width: 64, height: 64, padding: 0 }}
+                />
+                <div>
+                    移除成员 <DownOutlined />
+                </div>
+            </div>
+        </Dropdown>
+    );
+
     useEffect(() => {
         const storedToken = localStorage.getItem("token");
         const storedUserName = localStorage.getItem("userName");
@@ -252,44 +288,14 @@ export default function ChatPage() {
         dispatch(setToken(storedToken));
         dispatch(setName(storedUserName));
 
-        let socket: WebSocket | null = null;
-
         const initWebSocket = async () => {
             try {
                 console.log("🔌 初始化 WebSocket 连接");
-                socket = await connectWebSocket();
+                await connectWebSocket();
 
-                socket.onmessage = (event) => {
+                ws.onmessage = (event) => {
                     const data = JSON.parse(event.data);
                     console.log("📨 收到 WebSocket 消息：", data);
-
-                    if (data.type === "friend_request_response") {
-                        // const { receiver_name, status } = data;
-
-                        // const updatedPending = getPendingRequests().filter(p => p.userName !== receiver_name);
-                        // setPendingRequests(updatedPending);
-
-                        // setResults(prev =>
-                        //   prev.map(user =>
-                        //     user.userName === receiver_name
-                        //       ? { ...user, is_friend: status === "accepted", is_requested: false }
-                        //       : user
-                        //   )
-                        // );
-
-                        // const currentUser = localStorage.getItem("userName");
-                        // const pendingRequestKey = `${PENDING_REQUESTS_KEY}_${currentUser}_${receiver_name}`;
-                        // localStorage.removeItem(pendingRequestKey);
-
-                        // alert(`${receiver_name} ${status === "accepted" ? '接受' : '拒绝'}了你的好友请求`);
-                    }
-                    // 👇 WebSocket 收到后立即响应（例如发送一个 acknowledge）
-                    if (ws && ws.readyState === WebSocket.OPEN && data.type === "friend_request_response") {
-                        ws.send(JSON.stringify({
-                            action: "acknowledge",
-                            request_id: data.request_id,
-                        }));
-                    }
                 };
             } catch (err) {
                 console.error("WebSocket 初始化失败", err);
@@ -303,7 +309,8 @@ export default function ChatPage() {
                 socket.close();
             }
         };
-    }, [dispatch, router]);
+    }, []);
+
     useEffect(() => {
         const loadData = async () => {
             await getGroupMembers(); // 获取群成员

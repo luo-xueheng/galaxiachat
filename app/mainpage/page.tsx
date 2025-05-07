@@ -46,7 +46,14 @@ type FriendRequest = {
   request_type: string;
 };
 
+type GroupRequest = {
+  invite_id: string;
+  group_name: string;
+  inviter_name: string;
+};
+
 let ws: WebSocket | null = null;
+let ws1: WebSocket | null = null;
 
 const Page = () => {
   const userName = useSelector((state: RootState) => state.auth.name);
@@ -56,6 +63,7 @@ const Page = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [uncategorized, setUncategorized] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [pendingRequestsgroup, setPendingRequestsgroup] = useState<GroupRequest[]>([]);
   const [availableGroups, setAvailableGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -225,6 +233,68 @@ const Page = () => {
     connectWebSocket();
   }, [dispatch]);
 
+  useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    const storedUserName = localStorage.getItem("userName");
+    if (!storedToken || !storedUserName) {
+      alert("请先登录");
+      router.push("/login");
+      return;
+    }
+    if (storedToken) dispatch(setToken(storedToken));
+    if (storedUserName) dispatch(setName(storedUserName));
+    if (storedToken) {
+      fetchFriends();
+      fetchGroupTypes();
+    }
+    const connectWebSocketgroup = async (): Promise<WebSocket> => {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Token 不存在，无法建立 WebSocket 连接");
+
+      return new Promise((resolve, reject) => {
+        ws1 = new WebSocket(
+          `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/group-invite/?token=${encodeURIComponent(token)}`
+        );
+
+        ws1.onopen = () => {
+          console.log("✅ WebSocket 连接已建立");
+          resolve(ws1);
+        };
+
+        ws1.onerror = (error) => {
+          console.error("❌ WebSocket 连接错误:", error);
+          reject(error);
+        };
+
+        ws1.onclose = () => {
+          console.warn("⚠️ WebSocket 连接已关闭");
+          ws = null;
+        };
+
+        ws1.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log(data)
+          if (data.type === "new_invite") {
+            setPendingRequestsgroup((prev) => {
+              if (prev.some((r) => r.invite_id === data.invite_id)) {
+                return prev; // 已存在，忽略
+              }
+              return [...prev, {
+                invite_id: data.invite_id,
+                group_name: data.group_name,
+                inviter_name: data.inviter_name,
+              }];
+
+            });
+            console.log("pendingrequestsgroup", pendingRequestsgroup)
+          }
+        };
+      });
+    };
+
+    connectWebSocketgroup();
+  }, [dispatch]);
+
   const logout = async () => {
     const token = localStorage.getItem("token");
     try {
@@ -270,8 +340,30 @@ const Page = () => {
       message.error("WebSocket 未连接，无法操作");
     }
   };
+
+  const sendGroupResponse = (invite_id: string, response: "accept" | "decline") => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: "respond_invite", invite_id, response }));
+      const actionMsg = response === "accept" ? "已接受群聊邀请" : "已拒绝群聊邀请";
+      alert(actionMsg);
+      setPendingRequestsgroup(prev => prev.filter(r => r.invite_id !== invite_id));
+      //向WebSocket 发送显示已读
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          action: "acknowledge_invite",
+          invite_id: invite_id,
+        }));
+      }
+    } else {
+      message.error("WebSocket 未连接，无法操作");
+    }
+  };
+
   const handleAccept = (request_id: string) => sendFriendResponse(request_id, "accept");
   const handleReject = (request_id: string) => sendFriendResponse(request_id, "reject");
+
+  const handleAcceptgroup = (invite_id: string) => { sendGroupResponse(invite_id, "accept") };
+  const handleDeclinegroup = (invite_id: string) => { sendGroupResponse(invite_id, "decline") };
 
   const handleDelete = async (userNameToDelete: string, groupId?: string) => {
     const token = localStorage.getItem("token");
@@ -549,6 +641,47 @@ const Page = () => {
                 <List.Item.Meta
                   title={request.sender_name}
                   description={`请求加你为好友（类型：${request.request_type}）`}
+                />
+              </List.Item>
+            )}
+          />
+        </div>
+      )}
+      {pendingRequestsgroup.length > 0 && (
+        <div
+          style={{
+            background: "#fffbe6",
+            padding: 16,
+            borderRadius: 8,
+            border: "1px solid #ffe58f",
+          }}
+        >
+          <Title level={4}>待处理群聊邀请</Title>
+          <List
+            dataSource={pendingRequestsgroup}
+            renderItem={(request) => (
+              <List.Item
+                actions={[
+                  <Button
+                    key="accept"
+                    type="link"
+                    onClick={() => handleAcceptgroup(request.invite_id)}
+                  >
+                    接受
+                  </Button>,
+                  <Button
+                    key="decline"
+                    type="link"
+                    danger
+                    onClick={() => handleDeclinegroup(request.invite_id)}
+                  >
+                    拒绝
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={request.inviter_name}
+                  description={`${request.inviter_name}邀请你加入群聊 ${request.group_name}`}
                 />
               </List.Item>
             )}
