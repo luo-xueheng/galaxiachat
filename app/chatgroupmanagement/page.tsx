@@ -1,5 +1,5 @@
 'use client';
-
+import { Suspense } from 'react';
 import { use, useEffect, useRef, useState } from 'react';
 import type { MenuProps } from 'antd';
 import { useSelector, useDispatch } from "react-redux";
@@ -21,7 +21,7 @@ type announcelist = {
     content: string;
     created_at: number;
 };
-export default function ChatPage() {
+const ChatGroupManagement = () => {
     const dispatch = useDispatch();
     const [friendOptions, setFriendOptions] = useState<{ label: string; value: string }[]>([]);
     const [groupMembers, setGroupMembers] = useState<any[]>([]);
@@ -446,4 +446,10 @@ export default function ChatPage() {
         </Layout>
     );
 }
-
+export default function Page() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <ChatGroupManagement />
+        </Suspense>
+    );
+}
