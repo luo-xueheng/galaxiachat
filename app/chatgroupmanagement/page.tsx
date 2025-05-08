@@ -4,7 +4,7 @@ import { use, useEffect, useRef, useState } from 'react';
 import type { MenuProps } from 'antd';
 import { useSelector, useDispatch } from "react-redux";
 import { useParams, useSearchParams } from 'next/navigation';
-import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image, Row, Col, Dropdown } from 'antd';
+import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image, Row, Col, Dropdown, Divider, Collapse } from 'antd';
 import { SmileOutlined, PictureOutlined } from '@ant-design/icons';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
 import { DownOutlined, UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
@@ -14,41 +14,12 @@ import { setName, setToken } from "../redux/auth";
 const { Text } = Typography;
 import { BACKEND_URL } from "../constants/string";
 import { useRouter } from 'next/navigation';
-import { get } from 'http';
-import { group } from 'console';
-import { createSelectorCreator } from '@reduxjs/toolkit';
+import { Modal } from 'antd';
+import { Friend, GroupInviteRequest, GroupInviteResponse, WsGroupMessage } from '../api';
 
-type Friend = {
-    userName: string;
-    avatar: string;
-};
-let ws: WebSocket | null = null;
-const connectWebSocket = async (): Promise<WebSocket> => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        throw new Error("❌ Token 不存在，无法建立 WebSocket 连接");
-    }
-
-    return new Promise((resolve, reject) => {
-        ws = new WebSocket(
-            `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/group-invite/?token=${encodeURIComponent(token)}`
-        );
-
-        ws.onopen = () => {
-            console.log('✅ WebSocket 连接已建立');
-            resolve(ws);
-        };
-
-        ws.onerror = (error) => {
-            console.error('❌ WebSocket 连接错误:', error);
-            reject(error);
-        };
-
-        ws.onclose = () => {
-            console.warn('⚠️ WebSocket 连接已关闭');
-            ws = null;
-        };
-    });
+type announcelist = {
+    content: string;
+    created_at: number;
 };
 export default function ChatPage() {
     const dispatch = useDispatch();
@@ -67,6 +38,9 @@ export default function ChatPage() {
     const [adminList, setAdminList] = useState<string[]>([]);
     const [creator, setcreator] = useState<string>(""); // 创建者
     const [currentUserRole, setCurrentUserRole] = useState("member");
+    const [historyAnnounceList, setHistoryAnnounceList] = useState<announcelist[]>([]); // 历史公告列表
+    // 定义用于保存公告的 state
+    const [announcementDraft, setDraft] = useState('');
     // const { chatId } = useParams(); // 获取路由中的chatId
     // const groupId = chatId;
 
@@ -81,6 +55,12 @@ export default function ChatPage() {
     const [input, setInput] = useState('');
     const messageEndRef = useRef<HTMLDivElement>(null);
 
+
+    const collapseItems = historyAnnounceList.map((item, index) => ({
+        key: String(index),
+        children: <p>{item.content}</p>,
+    }));
+
     const scrollToBottom = () => {
         messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -89,7 +69,17 @@ export default function ChatPage() {
 
     const [socket, setSocket] = useState<WebSocket | null>(null);
 
+    // Declare modalOpen state and set the default value to false
+    const [modalOpen, setModalOpen] = useState(false);
+
+    // Function to show the modal
+    const showModal = () => {
+        setModalOpen(true);
+    };
+
+
     //获取全部群成员
+    //同时也实现了判断当前用户身份和获取历史群公告
     const getGroupMembers = async () => {
         const token = localStorage.getItem("token");
         const res = await fetch(`${BACKEND_URL}/api/group-info?conversation_id=${groupId}`, {
@@ -138,6 +128,9 @@ export default function ChatPage() {
         setGroupMembers(allGroupMembers);
 
         setCurrentUserRole(currentUserRole);  // 存到状态里
+        setHistoryAnnounceList(targetGroup.announcements); // 历史公告列表
+        // console.log("当前历史群公告", historyAnnounceList);
+        console.log("最新历史群公告", targetGroup.announcements);
     };
     const fetchFriends = async () => {
         const token = localStorage.getItem("token");
@@ -179,22 +172,21 @@ export default function ChatPage() {
                     value,
                     type: 'item', // 添加了 'type' 属性
                     onClick: async (info) => {
-                        const invitee_name = info.key;
-                        try {
-                            if (ws && ws.readyState === WebSocket.OPEN) {
-                                ws.send(JSON.stringify({
-                                    action: "send_invite",
-                                    group_id: groupId,
-                                    invitee_name: invitee_name,
-                                    inviter_name: currentUser,
+                        const request = {
+                            invitee: "TODO",
+                            conversation_id: "TODO",
+                        } as GroupInviteRequest
 
-                                }));
-                            } else {
-                                console.warn("⚠️ WebSocket 尚未连接");
-                            }
-                        } catch (error) {
-                            console.error('添加好友失败:', error);
-                            alert('连接服务器失败，请稍后重试');
+                        const response = await (await fetch("/api/[TODO]", {
+                            method: "POST",
+                            // TODO
+                        })).json() as GroupInviteResponse
+
+                        if (response.type === "success") {
+                            // [TODO]
+                        }
+                        else if (response.type === "error") {
+                            // [TODO]
                         }
                     },
                 })),
@@ -218,7 +210,7 @@ export default function ChatPage() {
         if (member.username === currentUser) return false; // 不能移除自己
         if (currentUserRole === "creator") return true;    // 群主可移除任何人（除自己）
         if (currentUserRole === "admin") {
-            return member.role === "member";               // 管理员只能移除普通成员
+            return member.role === "normal";               // 管理员只能移除普通成员
         }
         return false; // 普通成员不能移除任何人
     });
@@ -277,6 +269,47 @@ export default function ChatPage() {
         </Dropdown>
     );
 
+    //发送群公告
+    const handleSendAnnounce = () => {
+        const token = localStorage.getItem("token");
+        console.log("当前groupid", groupId)
+        fetch(`${BACKEND_URL}/api/publish-announcement`, {
+            method: "POST",
+            headers: {
+                Authorization: `${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                conversation_id: groupId,
+                content: announcementDraft,
+            }),
+        })
+            .then((res) => res.json())
+            .then((res) => {
+                if (Number(res.code) === 0) {
+                    alert("发送群公告成功");
+                }
+                else {
+                    console.log("发送群公告失败", res);
+                }
+            })
+        setDraft(''); // 清空草稿
+        setModalOpen(false);
+        getGroupMembers(); // 通过调用大接口重新获取历史公告
+
+    };
+
+    // 保存公告的函数
+    const saveAnnounce = () => {
+        console.log("保存公告:", announcementDraft);
+        setModalOpen(false);
+    };
+    //取消公告
+    const handleCancelAnnounce = () => {
+        setModalOpen(false);
+        setDraft(''); // 清空草稿
+    };
+
     useEffect(() => {
         const storedToken = localStorage.getItem("token");
         const storedUserName = localStorage.getItem("userName");
@@ -287,22 +320,6 @@ export default function ChatPage() {
         }
         dispatch(setToken(storedToken));
         dispatch(setName(storedUserName));
-
-        const initWebSocket = async () => {
-            try {
-                console.log("🔌 初始化 WebSocket 连接");
-                await connectWebSocket();
-
-                ws.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    console.log("📨 收到 WebSocket 消息：", data);
-                };
-            } catch (err) {
-                console.error("WebSocket 初始化失败", err);
-            }
-        };
-
-        initWebSocket();
 
         return () => {
             if (socket) {
@@ -357,30 +374,70 @@ export default function ChatPage() {
         <Layout style={{ height: '100vh' }}>
             <Header style={{ background: '#fff', padding: '0 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text strong>
+                    <Typography.Title level={3} style={{ margin: 0 }}>
                         群聊管理
-                    </Text>
+                    </Typography.Title>
                 </div>
             </Header>
+            {/* 包裹群聊信息标题和 Divider */}
+            <div style={{ paddingLeft: 24 }}>
+                <Divider style={{ margin: '16px 0' }} />
+                <Typography.Title level={4}>群聊信息</Typography.Title>
+                <Content style={{ padding: '20px', flex: 1 }}>
+                    <Typography.Title level={5}>
+                        群聊名称: {groupname}
+                    </Typography.Title>
+                    <Typography.Title level={5}>
+                        群成员：
+                    </Typography.Title>
+                    <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto' }}>
+                        {groupMembers.map((member, index) => (
+                            <div key={index} style={{ textAlign: 'center', marginRight: 16 }}>
+                                <Avatar src={member.avatar} size={64} />
+                                <div>{member.username}</div>
+                                <div>{member.role}</div>
+                            </div>
+                        ))}
 
-            <Content style={{ padding: '20px', flex: 1 }}>
-                <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto' }}>
-                    {groupMembers.map((member, index) => (
-                        <div key={index} style={{ textAlign: 'center', marginRight: 16 }}>
-                            <Avatar src={member.avatar} size={64} />
-                            <div>{member.username}</div>
-                            <div>{member.role}</div>
-                        </div>
-                    ))}
+                        {/* 添加成员按钮 */}
+                        <AddMemberDropdown />
+                        {/* 只有当 member.role 不是 'normal' 时才显示移除成员按钮 */}
+                        {currentUserRole !== 'normal' && (
+                            <RemoveMemberDropdown />
+                        )}
+                    </div>
+                    <Typography.Title level={5}>
+                        历史群公告：
+                    </Typography.Title>
+                    <Collapse accordion items={collapseItems} />
+                </Content>
+            </div>
+            <Content style={{ padding: '16px' }}>
+                <Divider style={{ margin: '16px 0' }} />
 
-                    {/* 添加成员按钮 */}
-                    <AddMemberDropdown />
+                {(currentUserRole === "creator" || currentUserRole === "admin") && (
+                    <Button type="default" onClick={showModal} style={{ marginLeft: '16px' }}>
+                        发送群公告
+                    </Button>
+                )}
+                <Modal
+                    title="公告编辑"
+                    open={modalOpen}
+                    onOk={handleSendAnnounce}
+                    onCancel={handleCancelAnnounce}
+                >
+                    <Input.TextArea
+                        rows={4}
+                        value={announcementDraft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        placeholder="请输入群公告内容"
+                    />
+                    <Button type="primary" onClick={saveAnnounce} style={{ marginTop: 8 }}>
+                        保存公告
+                    </Button>
+                </Modal>
 
-                    {/* 移除成员按钮 */}
-                    <RemoveMemberDropdown />
-                </div>
             </Content>
-
             <Footer style={{ textAlign: 'center', position: 'absolute', bottom: 0, width: '100%' }}>
                 <Button type="primary" onClick={handleLeaveGroup}>
                     退出群聊

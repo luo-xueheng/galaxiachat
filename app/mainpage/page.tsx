@@ -24,6 +24,7 @@ import {
   LOGOUT_SUCCESS,
   LOGOUT_FAILED,
 } from "../constants/string";
+import { WsGroupMessage } from "../api";
 
 const { Panel } = Collapse;
 const { Title } = Typography;
@@ -52,8 +53,8 @@ type GroupRequest = {
   inviter_name: string;
 };
 
-let ws: WebSocket | null = null;
-let ws1: WebSocket | null = null;
+let ws_friend_request: WebSocket | null = null;
+let ws_group_invite: WebSocket | null = null;
 
 const Page = () => {
   const userName = useSelector((state: RootState) => state.auth.name);
@@ -191,26 +192,26 @@ const Page = () => {
       if (!token) throw new Error("Token 不存在，无法建立 WebSocket 连接");
 
       return new Promise((resolve, reject) => {
-        ws = new WebSocket(
+        ws_friend_request = new WebSocket(
           `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token)}`
         );
 
-        ws.onopen = () => {
+        ws_friend_request.onopen = () => {
           console.log("✅ WebSocket 连接已建立");
-          resolve(ws);
+          resolve(ws_friend_request);
         };
 
-        ws.onerror = (error) => {
+        ws_friend_request.onerror = (error) => {
           console.error("❌ WebSocket 连接错误:", error);
           reject(error);
         };
 
-        ws.onclose = () => {
+        ws_friend_request.onclose = () => {
           console.warn("⚠️ WebSocket 连接已关闭");
-          ws = null;
+          ws_friend_request = null;
         };
 
-        ws.onmessage = (event) => {
+        ws_friend_request.onmessage = (event) => {
           const data = JSON.parse(event.data);
           //console.log(data)
           if (data.type === "friend_request" && data.sender_name && data.request_id) {
@@ -252,41 +253,35 @@ const Page = () => {
       if (!token) throw new Error("Token 不存在，无法建立 WebSocket 连接");
 
       return new Promise((resolve, reject) => {
-        ws1 = new WebSocket(
+        ws_group_invite = new WebSocket(
           `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/group-invite/?token=${encodeURIComponent(token)}`
         );
 
-        ws1.onopen = () => {
+        ws_group_invite.onopen = () => {
           console.log("✅ WebSocket 连接已建立");
-          resolve(ws1);
+          resolve(ws_group_invite);
         };
 
-        ws1.onerror = (error) => {
+        ws_group_invite.onerror = (error) => {
           console.error("❌ WebSocket 连接错误:", error);
           reject(error);
         };
 
-        ws1.onclose = () => {
+        ws_group_invite.onclose = () => {
           console.warn("⚠️ WebSocket 连接已关闭");
-          ws = null;
+          ws_friend_request = null;
         };
 
-        ws1.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          console.log(data)
-          if (data.type === "new_invite") {
-            setPendingRequestsgroup((prev) => {
-              if (prev.some((r) => r.invite_id === data.invite_id)) {
-                return prev; // 已存在，忽略
-              }
-              return [...prev, {
-                invite_id: data.invite_id,
-                group_name: data.group_name,
-                inviter_name: data.inviter_name,
-              }];
-
-            });
-            console.log("pendingrequestsgroup", pendingRequestsgroup)
+        ws_group_invite.onmessage = (event) => {
+          const data = JSON.parse(event.data) as WsGroupMessage;
+          if (data.type === "GroupUserReviewInvite") {
+            // [TODO]
+          }
+          else if (data.type === "GroupAdminReviewInvite") {
+            // [TODO]
+          }
+          else if (data.type === "GroupRemoveMe") {
+            // [TODO]
           }
         };
       });
@@ -322,14 +317,14 @@ const Page = () => {
     }
   };
   const sendFriendResponse = (request_id: string, response: "accept" | "reject") => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ action: "respond_request", request_id, response }));
+    if (ws_friend_request && ws_friend_request.readyState === WebSocket.OPEN) {
+      ws_friend_request.send(JSON.stringify({ action: "respond_request", request_id, response }));
       const actionMsg = response === "accept" ? "已接受好友请求" : "已拒绝好友请求";
       alert(actionMsg);
       setPendingRequests(prev => prev.filter(r => r.request_id !== request_id));
       //向WebSocket 发送显示已读
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
+      if (ws_friend_request && ws_friend_request.readyState === WebSocket.OPEN) {
+        ws_friend_request.send(JSON.stringify({
           action: "acknowledge",
           request_id: request_id,
         }));
@@ -342,14 +337,14 @@ const Page = () => {
   };
 
   const sendGroupResponse = (invite_id: string, response: "accept" | "decline") => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ action: "respond_invite", invite_id, response }));
+    if (ws_friend_request && ws_friend_request.readyState === WebSocket.OPEN) {
+      ws_friend_request.send(JSON.stringify({ action: "respond_invite", invite_id, response }));
       const actionMsg = response === "accept" ? "已接受群聊邀请" : "已拒绝群聊邀请";
       alert(actionMsg);
       setPendingRequestsgroup(prev => prev.filter(r => r.invite_id !== invite_id));
       //向WebSocket 发送显示已读
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
+      if (ws_friend_request && ws_friend_request.readyState === WebSocket.OPEN) {
+        ws_friend_request.send(JSON.stringify({
           action: "acknowledge_invite",
           invite_id: invite_id,
         }));
