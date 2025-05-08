@@ -4,7 +4,7 @@ import { use, useEffect, useRef, useState } from 'react';
 import type { MenuProps } from 'antd';
 import { useSelector, useDispatch } from "react-redux";
 import { useParams, useSearchParams } from 'next/navigation';
-import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image, Row, Col, Dropdown, Divider, Collapse } from 'antd';
+import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image, Row, Col, Dropdown, Divider, Collapse, Select } from 'antd';
 import { SmileOutlined, PictureOutlined } from '@ant-design/icons';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
 import { DownOutlined, UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
@@ -71,11 +71,28 @@ const ChatGroupManagement = () => {
 
     // Declare modalOpen state and set the default value to false
     const [modalOpen, setModalOpen] = useState(false);
+    const [modal1Open, setModal1Open] = useState(false);
+    const [modal2Open, setModal2Open] = useState(false);
 
     // Function to show the modal
     const showModal = () => {
         setModalOpen(true);
     };
+
+
+    // 打开和关闭 modal
+    const showModal1 = () => setModal1Open(true);
+    const handleCancel1 = () => {
+        setModal1Open(false);
+    };
+    const [selectedAdminUsername, setSelectedAdminUsername] = useState(null);
+
+    // 打开和关闭 modal
+    const showModal2 = () => setModal2Open(true);
+    const handleCancel2 = () => {
+        setModal2Open(false);
+    };
+    const [selectedNewCreator, setSelectedNewCreator] = useState(null);
 
 
     //获取全部群成员
@@ -310,6 +327,75 @@ const ChatGroupManagement = () => {
         setDraft(''); // 清空草稿
     };
 
+    // 筛选出非管理员成员
+    const nonAdminMembers = groupMembers.filter(member => {
+        if (member.username === currentUser) return false; // 群主不能把自己设成管理员
+        if (member.role === "admin") return false;  //已经是管理员的不能重复设置
+        else return true;
+    });
+    // 添加管理员的函数
+    const handleAddAdmin = () => {
+        const token = localStorage.getItem("token");
+        console.log("当前groupid", groupId)
+        fetch(`${BACKEND_URL}/api/set-admin`, {
+            method: "POST",
+            headers: {
+                Authorization: `${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                userName: selectedAdminUsername,
+                conversation_id: groupId,
+            }),
+        })
+            .then((res) => res.json())
+            .then((res) => {
+                if (Number(res.code) === 0) {
+                    getGroupMembers();
+                    alert("添加管理员成功");
+                }
+                else {
+                    console.log("添加管理员失败", res);
+                }
+            })
+        setModal1Open(false);
+        getGroupMembers(); // 通过调用大接口重新获取管理员信息
+    }
+
+    // 筛选出新群主
+    const nonCreator = groupMembers.filter(member => {
+        if (member.username === currentUser) return false; // 新群主不能选自己
+        else return true;
+    });
+    // 添加管理员的函数
+    const TransferOwnership = () => {
+        const token = localStorage.getItem("token");
+        console.log("当前groupid", groupId)
+        fetch(`${BACKEND_URL}/api/transfer-ownership`, {
+            method: "POST",
+            headers: {
+                Authorization: `${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                userName: selectedNewCreator,
+                conversation_id: groupId,
+            }),
+        })
+            .then((res) => res.json())
+            .then((res) => {
+                if (Number(res.code) === 0) {
+                    getGroupMembers();
+                    alert("群主转让成功");
+                }
+                else {
+                    console.log("群主转让失败", res);
+                }
+            })
+        setModal2Open(false);
+        getGroupMembers(); // 通过调用大接口重新获取群主信息
+    }
+
     useEffect(() => {
         const storedToken = localStorage.getItem("token");
         const storedUserName = localStorage.getItem("userName");
@@ -345,7 +431,10 @@ const ChatGroupManagement = () => {
 
     const handleLeaveGroup = () => {
         const token = localStorage.getItem("token");
-        console.log("当前groupid", groupId)
+        if (currentUserRole === "creator") {
+            alert("群主不能退出群聊，请先转让群主身份")
+            return;
+        }
         fetch(`${BACKEND_URL}/api/leave-groups`, {
             method: "POST",
             headers: {
@@ -371,7 +460,7 @@ const ChatGroupManagement = () => {
             })
     };
     return (
-        <Layout style={{ height: '100vh' }}>
+        <Layout style={{ minHeight: '100vh' }}>
             <Header style={{ background: '#fff', padding: '0 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Typography.Title level={3} style={{ margin: 0 }}>
@@ -383,7 +472,7 @@ const ChatGroupManagement = () => {
             <div style={{ paddingLeft: 24 }}>
                 <Divider style={{ margin: '16px 0' }} />
                 <Typography.Title level={4}>群聊信息</Typography.Title>
-                <Content style={{ padding: '20px', flex: 1 }}>
+                <Content style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
                     <Typography.Title level={5}>
                         群聊名称: {groupname}
                     </Typography.Title>
@@ -412,33 +501,93 @@ const ChatGroupManagement = () => {
                     <Collapse accordion items={collapseItems} />
                 </Content>
             </div>
-            <Content style={{ padding: '16px' }}>
-                <Divider style={{ margin: '16px 0' }} />
+            {(currentUserRole === "creator" || currentUserRole === "admin") && (
+                <div style={{ paddingLeft: 24 }}>
+                    <Content style={{ padding: '16px', overflowY: 'auto' }}>
+                        <Divider style={{ margin: '16px 0' }} />
+                        <Button type="default" onClick={showModal} style={{ marginLeft: '16px' }}>
+                            发送群公告
+                        </Button>
+                        <Modal
+                            title="公告编辑"
+                            open={modalOpen}
+                            onOk={handleSendAnnounce}
+                            onCancel={handleCancelAnnounce}
+                        >
+                            <Input.TextArea
+                                rows={4}
+                                value={announcementDraft}
+                                onChange={(e) => setDraft(e.target.value)}
+                                placeholder="请输入群公告内容"
+                            />
+                            <Button type="primary" onClick={saveAnnounce} style={{ marginTop: 8 }}>
+                                保存公告
+                            </Button>
+                        </Modal>
 
-                {(currentUserRole === "creator" || currentUserRole === "admin") && (
-                    <Button type="default" onClick={showModal} style={{ marginLeft: '16px' }}>
-                        发送群公告
-                    </Button>
-                )}
-                <Modal
-                    title="公告编辑"
-                    open={modalOpen}
-                    onOk={handleSendAnnounce}
-                    onCancel={handleCancelAnnounce}
-                >
-                    <Input.TextArea
-                        rows={4}
-                        value={announcementDraft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        placeholder="请输入群公告内容"
-                    />
-                    <Button type="primary" onClick={saveAnnounce} style={{ marginTop: 8 }}>
-                        保存公告
-                    </Button>
-                </Modal>
-
-            </Content>
-            <Footer style={{ textAlign: 'center', position: 'absolute', bottom: 0, width: '100%' }}>
+                    </Content>
+                </div>
+            )}
+            {/* 包裹群主权限的Divider */}
+            {currentUserRole === "creator" && (
+                <div style={{ paddingLeft: 24 }}>
+                    <Divider style={{ margin: '16px 0' }} />
+                    <Typography.Title level={4}>群主权限</Typography.Title>
+                    <Content style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
+                        {(currentUserRole === "creator") && (
+                            <Button type="default" onClick={showModal1} style={{ marginLeft: '16px' }}>
+                                添加群管理员
+                            </Button>
+                        )}
+                        <Modal
+                            title="添加群管理员"
+                            open={modal1Open}
+                            onOk={handleAddAdmin}
+                            onCancel={handleCancel1}
+                            okButtonProps={{ disabled: !selectedAdminUsername }}
+                        >
+                            <p>请选择要设为管理员的成员：</p>
+                            <Select
+                                placeholder="选择一个成员"
+                                onChange={(value) => setSelectedAdminUsername(value)}
+                                style={{ width: '100%' }}
+                            >
+                                {nonAdminMembers.map((member) => (
+                                    <Select.Option key={member.username} value={member.username}>
+                                        {member.name}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Modal>
+                        {(currentUserRole === "creator") && (
+                            <Button type="default" onClick={showModal2} style={{ marginLeft: '16px' }}>
+                                群主转让
+                            </Button>
+                        )}
+                        <Modal
+                            title="群主转让给其他群成员"
+                            open={modal2Open}
+                            onOk={TransferOwnership}
+                            onCancel={handleCancel2}
+                            okButtonProps={{ disabled: !selectedNewCreator }}
+                        >
+                            <p>将群主转让给：</p>
+                            <Select
+                                placeholder="选择一个成员"
+                                onChange={(value) => setSelectedNewCreator(value)}
+                                style={{ width: '100%' }}
+                            >
+                                {nonCreator.map((member) => (
+                                    <Select.Option key={member.username} value={member.username}>
+                                        {member.name}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Modal>
+                    </Content>
+                </div>
+            )}
+            <Footer style={{ textAlign: 'center', position: 'relative', bottom: 0, width: '100%' }}>
                 <Button type="primary" onClick={handleLeaveGroup}>
                     退出群聊
                 </Button>
