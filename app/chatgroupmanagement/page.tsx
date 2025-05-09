@@ -16,11 +16,22 @@ import { BACKEND_URL } from "../constants/string";
 import { useRouter } from 'next/navigation';
 import { Modal } from 'antd';
 import { Friend, GroupInviteRequest, GroupInviteResponse, WsGroupMessage } from '../api';
-
+import { connect } from 'http2';
+const PENDING_REQUESTS_KEY = 'pendingFriendRequests';
 type announcelist = {
     content: string;
     created_at: number;
 };
+type groupmember = {
+    username: string;
+    role: string;
+    avatar: string;
+    is_friend: boolean;
+    is_requested: boolean;
+};
+
+let ws: WebSocket | null = null;
+
 const ChatGroupManagement = () => {
     const dispatch = useDispatch();
     const [friendOptions, setFriendOptions] = useState<{ label: string; value: string }[]>([]);
@@ -39,6 +50,7 @@ const ChatGroupManagement = () => {
     const [creator, setcreator] = useState<string>(""); // 创建者
     const [currentUserRole, setCurrentUserRole] = useState("member");
     const [historyAnnounceList, setHistoryAnnounceList] = useState<announcelist[]>([]); // 历史公告列表
+    const [allFriends, setAllFriends] = useState<Friend[]>([]); // 所有好友列表
     // 定义用于保存公告的 state
     const [announcementDraft, setDraft] = useState('');
     // const { chatId } = useParams(); // 获取路由中的chatId
@@ -99,6 +111,17 @@ const ChatGroupManagement = () => {
     //同时也实现了判断当前用户身份和获取历史群公告
     const getGroupMembers = async () => {
         const token = localStorage.getItem("token");
+        const resfriend = await fetch(`${BACKEND_URL}/api/user/friends`, {
+            headers: { Authorization: `${token}` },
+        });
+        const datafriend = await resfriend.json();
+
+        const uncategorizedFriends: Friend[] = datafriend.data.uncategorized;
+        const categorizedGroups: { users: Friend[] }[] = datafriend.data.groups;
+        const categorizedFriends = categorizedGroups.flatMap(group => group.users);
+
+        const allFriends = [...uncategorizedFriends, ...categorizedFriends];
+        console.log("全部好友ingetgroupmembers", allFriends);
         const res = await fetch(`${BACKEND_URL}/api/group-info?conversation_id=${groupId}`, {
             method: "GET",
             headers: {
@@ -107,11 +130,9 @@ const ChatGroupManagement = () => {
         });
 
         const data = await res.json();
-        console.log("获取群成员", data);
         const targetGroup = data.groups?.[groupId];
-        console.log("当前群成员", targetGroup);
         const newAdminList: string[] = [];
-        const allGroupMembers: { username: string; role: string; avatar: string }[] = [];
+        const allGroupMembers = [] as groupmember[];
         let newcreator = ""
         // 处理管理员数组
         for (const user of targetGroup.members || []) {
@@ -132,6 +153,8 @@ const ChatGroupManagement = () => {
                 username: user.username,
                 role: user.role, // 一般是 "member"
                 avatar: user.avatar || "",
+                is_friend: allFriends.some(friend => friend.userName === user.username),
+                is_requested: localStorage.getItem(`${PENDING_REQUESTS_KEY}_${currentUserName}_${user.username}`) === 'true',
             });
             //判断当前用户身份
             if (user.username === currentUserName) {
@@ -174,11 +197,59 @@ const ChatGroupManagement = () => {
             }));
             console.log("过滤后的好友列表", options);
             setFriendOptions(options); // 用于 AddMemberDropdown 渲染
+            setAllFriends(allFriends); // 用于后续的其他操作
         } catch (err) {
             // message.error("请求好友列表失败");
         }
     };
+    //通过群聊添加好友
+    const addFriend = async (item: groupmember) => {
+        getGroupMembers(); // 重新获取群成员列表
+        try {
+            const token = localStorage.getItem("token");
+            ws = new WebSocket(
+                `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token)}`
+            );
+            ws.onopen = () => {
+                ws.send(JSON.stringify({
+                    action: "send_request",
+                    userName: item.username,
+                    request_type: "direct",
+                }));
+            };
+            ws.onerror = (e) => {
+                console.error("❌ WebSocket 连接错误", e);
+            };
 
+            ws.onmessage = (event) => {
+                try {
+                    const response = JSON.parse(event.data);
+                    console.log("📤 发送申请响应：", event.data);
+
+                    if (response.status === "success") {
+                        alert(`好友请求已成功发送给 ${item.username}`);
+                        const request_id = response.request_id;
+
+                        // const newPendingList = [...getPendingRequests(), { userName: item.userName, request_id }];
+                        // setPendingRequests(newPendingList);
+
+                        // setResults(prev =>
+                        //     prev.map(user =>
+                        //         user.userName === item.userName ? { ...user, is_requested: true } : user
+                        //     )
+                        // );
+                        localStorage.setItem(`${PENDING_REQUESTS_KEY}_${currentUser}`, 'true');
+                    }
+                } catch (e) {
+                    console.error('解析响应失败:', e);
+                    alert('处理服务器响应时出错');
+                }
+            };
+        } catch (error) {
+            console.error('添加好友失败:', error);
+            alert('连接服务器失败，请稍后重试');
+        }
+    };
     // 添加成员按钮
     const AddMemberDropdown = () => (
         <Dropdown
@@ -397,6 +468,7 @@ const ChatGroupManagement = () => {
     }
 
     useEffect(() => {
+
         const storedToken = localStorage.getItem("token");
         const storedUserName = localStorage.getItem("userName");
 
@@ -404,18 +476,12 @@ const ChatGroupManagement = () => {
             router.push('/login'); // ✅ 如果没登录，立刻跳转
             return;
         }
-        dispatch(setToken(storedToken));
-        dispatch(setName(storedUserName));
 
-        return () => {
-            if (socket) {
-                socket.close();
-            }
-        };
     }, []);
 
     useEffect(() => {
         const loadData = async () => {
+            fetchFriends(); // 获取好友列表
             await getGroupMembers(); // 获取群成员
         };
         loadData();
@@ -485,6 +551,16 @@ const ChatGroupManagement = () => {
                                 <Avatar src={member.avatar} size={64} />
                                 <div>{member.username}</div>
                                 <div>{member.role}</div>
+                                {member.username != currentUser && (
+                                    <Button
+                                        type="primary"
+                                        onClick={() => addFriend(member)}
+                                        disabled={member.is_friend || member.is_requested}
+                                    >
+                                        {member.is_friend ? "已添加" : member.is_requested ? "已申请" : "添加好友"}
+                                    </Button>
+
+                                )}
                             </div>
                         ))}
 
