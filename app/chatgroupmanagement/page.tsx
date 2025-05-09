@@ -251,6 +251,7 @@ const ChatGroupManagement = () => {
             alert('连接服务器失败，请稍后重试');
         }
     };
+
     // 添加成员按钮
     const AddMemberDropdown = () => (
         <Dropdown
@@ -260,22 +261,33 @@ const ChatGroupManagement = () => {
                     label,
                     value,
                     type: 'item', // 添加了 'type' 属性
-                    onClick: async (info) => {
-                        const request = {
-                            invitee: "TODO",
-                            conversation_id: "TODO",
-                        } as GroupInviteRequest
-
-                        const response = await (await fetch("/api/[TODO]", {
-                            method: "POST",
-                            // TODO
-                        })).json() as GroupInviteResponse
-
-                        if (response.type === "success") {
-                            // [TODO]
-                        }
-                        else if (response.type === "error") {
-                            // [TODO]
+                    onClick: async () => {
+                        const token = localStorage.getItem("token");
+                        console.log("当前token", token);
+                        try {
+                            const res = await fetch(`${BACKEND_URL}/api/send-group-invitation`, {
+                                method: "POST",
+                                headers: {
+                                    Authorization: token,
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                    conversation_id: groupId,
+                                    invitee: value,
+                                }),
+                            });
+                            const result = await res.json();
+                            if (result.info === "Succeed") {
+                                alert(`成功将进群邀请发送给好友${value}，待对方和群主管理员确认后方可入群`);
+                            }
+                            else if (result.code === 5) {
+                                alert(`进群申请已发送给好友${value}，请勿重复发送！`);
+                            }
+                            else {
+                                alert(`邀请失败: ${result.message || "未知错误"}`);
+                            }
+                        } catch (err) {
+                            alert("请求失败，请稍后重试");
                         }
                     },
                 })),
