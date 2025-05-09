@@ -16,7 +16,7 @@ import {
 } from '@ant-design/pro-components';
 import { Button, Divider, Space, Tabs, message, theme } from 'antd';
 import type { CSSProperties } from 'react';
-import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX,REGISTER_FAILED,REGISTER_SUCCESS_PREFIX,REGISTER_REQUIRED} from "../constants/string";
+import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX, REGISTER_FAILED, REGISTER_SUCCESS_PREFIX, REGISTER_REQUIRED } from "../constants/string";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from "react-redux";
@@ -39,42 +39,45 @@ const Page = () => {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [nickName, setNickName] = useState("");
   const { token } = theme.useToken();
   const router = useRouter(); // 获取 router 实例
   const dispatch = useDispatch();
   const register = async () => {
-    console.log("userName"+userName)
-    console.log("phone"+phone)
-    console.log("password"+password)
-    
+    console.log("userName" + userName)
+    console.log("phone" + phone)
+    console.log("password" + password)
+
     fetch(`/api/register`, {
-          method: "POST",
-          body: JSON.stringify({
-              userName,
-              password,
-              email,
-              phone,
-          }),
+      method: "POST",
+      body: JSON.stringify({
+        userName,
+        password,
+        email,
+        phone,
+        nickName,
+
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (Number(res.code) === 0) {
+          dispatch(setToken(res.token));
+          dispatch(setName(userName));
+          // 存储 token
+          localStorage.setItem("token", res.token);
+          localStorage.setItem("userName", userName);
+          alert(REGISTER_SUCCESS_PREFIX + userName);
+          /**
+           * @note 这里假定 login 页面不是首页面，大作业中这样写的话需要作分支判断
+           */
+          router.push("/mainpage");
+        }
+        else {
+          alert(REGISTER_FAILED);
+        }
       })
-          .then((res) => res.json())
-          .then((res) => {
-              if (Number(res.code) === 0) {
-                  dispatch(setToken(res.token));
-                  dispatch(setName(userName));
-                    // 存储 token
-                  localStorage.setItem("token", res.token);
-                  localStorage.setItem("userName", userName);
-                  alert(REGISTER_SUCCESS_PREFIX + userName);
-                  /**
-                   * @note 这里假定 login 页面不是首页面，大作业中这样写的话需要作分支判断
-                   */
-                  router.push("/mainpage");
-              }
-              else {
-                  alert(REGISTER_FAILED);
-              }
-          })
-          .catch((err) => alert(FAILURE_PREFIX + err));
+      .catch((err) => alert(FAILURE_PREFIX + err));
   };
 
   return (
@@ -139,6 +142,33 @@ const Page = () => {
                 },
               ]}
             />
+            <ProFormText
+              name="nickname"
+              fieldProps={{
+                size: 'large',
+                prefix: (
+                  <UserOutlined
+                    style={{
+                      color: token.colorText,
+                    }}
+                    className={'prefixIcon'}
+                  />
+                ),
+                value: nickName,
+                onChange: (e) => setNickName(e.target.value),
+              }}
+              placeholder={'昵称: '}
+              rules={[
+                {
+                  required: true,
+                  message: '请输入昵称!',
+                },
+                {
+                  max: 50,
+                  message: '昵称不能超过50个字符',
+                },
+              ]}
+            />
             <ProFormText.Password
               name="password"
               fieldProps={{
@@ -185,7 +215,7 @@ const Page = () => {
                 }
               ]}
             />
-             <ProFormText
+            <ProFormText
               name="email"
               fieldProps={{
                 size: 'large',
@@ -212,7 +242,7 @@ const Page = () => {
                 },
               ]}
             />
-             <ProFormText
+            <ProFormText
               name="phone"
               fieldProps={{
                 size: 'large',
