@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image } from 'antd';
-import { SmileOutlined, PictureOutlined } from '@ant-design/icons';
+import { SmileOutlined, PictureOutlined, CaretRightFilled } from '@ant-design/icons';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
 import { Drawer } from 'antd';
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
 import { BACKEND_URL } from "../../constants/string";
 import { useRouter } from 'next/navigation';
+import { group } from 'console';
 
 
 
@@ -19,6 +20,7 @@ type MsgType = 'text' | 'emoji' | 'image'; // 消息类型
 interface ChatMessage {
     id: number;                 // msg_id
     sender: 'me' | 'friend';    // 判断 sender_name 是否是自己
+    senderName: string;       // 发送者的用户名
     msgType: MsgType;           // 消息类型
     content: string;            // 消息内容
     timestamp: string;          // 格式化后的 created_at
@@ -44,7 +46,9 @@ export default function ChatPage() {
     // const groupId = searchParams.get("currentChatGroupId"); // 获取当前群聊的ID
     const isGroupChat = searchParams.get("isGroupChat"); // 判断是否是群聊
     const { chatId } = useParams(); // 获取路由中的chatId
-    const groupId = chatId;
+    const groupIdRaw = chatId;
+    const groupId = Array.isArray(groupIdRaw) ? groupIdRaw[0] : groupIdRaw;
+    console.log("当前聊天ID: ", chatId);
 
     console.log("当前用户: ", currentUser);
     console.log("当前用户token: ", currentUserToken);
@@ -88,46 +92,64 @@ export default function ChatPage() {
 
     const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
     const [friendAvatar, setFriendAvatar] = useState<string | undefined>(undefined);
+    const [avatarMap, setAvatarMap] = useState<Record<string, string | null>>({});
 
     useEffect(() => {
         const fetchAvatars = async () => {
-            try {
+            if (!currentUser) return;
 
-                const fetchUserAvatar = async (userName: string): Promise<string | undefined> => {
-                    const response = await fetch('/api/user/' + userName, {
-                        method: 'GET',
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('获取头像失败');
-                    }
-
-                    const data = await response.json();
-                    console.log(response)
-                    console.log("用户头像获取成功", data.avatar);
-                    return data.avatar;
-                };
-                const [myAvatar, friendAvatar] = await Promise.all([
-                    fetchUserAvatar(currentUser!),
-                    fetchUserAvatar(friendUserName as string),
-                    // fetchUserAvatar(currentUser),
-                    // fetchUserAvatar(friendUserName),
-                    console.log("当前用户", currentUser),
-                    console.log("当前好友", friendUserName),
-                ]);
-                console.log("当前用户头像", myAvatar),
-                    console.log("当前好友头像", friendAvatar),
-
-                    setMyAvatar(myAvatar);
-                setFriendAvatar(friendAvatar);
-
-            } catch (err) {
-                alert('无法加载头像，请检查网络或登录状态');
+            // 1. 构建要拉取头像的用户名列表
+            const usernames = [currentUser];
+            if (!isGroupChat && friendUserName) {
+                usernames.push(friendUserName);
             }
+            if (isGroupChat && groupname) {
+
+                const token = localStorage.getItem("token");
+                const res = await fetch(`${BACKEND_URL}/api/group-info?conversation_id=${groupId}`, {
+                    method: "GET",
+                    headers: {
+                        Authorization: `${token}`,
+                    },
+                });
+                const data = await res.json();
+                const targetGroup = data.groups?.[groupId];
+                console.log("dataformembers:", data);
+                console.log('targetGroup:', targetGroup);
+                for (const user of targetGroup.members || []) {
+                    usernames.push(user.username);
+                }
+            }
+            console.log('要拉取头像的用户名列表:', usernames);
+            // 2. 针对每个 username，调用 fetchUserAvatar
+            const fetchUserAvatar = async (userName: string): Promise<string | null> => {
+                try {
+                    const res = await fetch('/api/user/' + userName);
+                    if (!res.ok) throw new Error();
+                    const data = await res.json();
+                    return data.avatar;
+                } catch {
+                    return null;
+                }
+            };
+
+            // 3. 并行拉取所有头像
+            const avatars = await Promise.all(usernames.map(u => fetchUserAvatar(u)));
+
+            console.log('拉取的suoyou头像:', avatars);
+
+            // 4. 构建一个 map：{ user1: avatar1, user2: avatar2, ... }
+            const newMap: Record<string, string | null> = {};
+            usernames.forEach((u, i) => {
+                newMap[u] = avatars[i];
+            });
+
+            // 5. 写入 state
+            setAvatarMap(newMap);
         };
 
         fetchAvatars();
-    }, [friendUserName, currentUser, currentUserToken]);
+    }, []);
 
     const [messages, setMessages] = useState<ChatMessage[]>([]); // 初始化为空数组
     const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -163,6 +185,7 @@ export default function ChatPage() {
                     return {
                         id: msg.msg_id,
                         sender: isMe ? 'me' : 'friend',
+                        senderName: msg.sender_name,
                         msgType: msg.msg_type as MsgType,
                         content:
                             msg.msg_type === 'image'
@@ -214,6 +237,7 @@ export default function ChatPage() {
                     const newMessage: ChatMessage = {
                         id: msg.msg_id,
                         sender: isMe ? 'me' : 'friend',
+                        senderName: msg.sender_name,
                         msgType: msg.msg_type as MsgType,
                         content:
                             msg.msg_type === 'image'
@@ -397,7 +421,7 @@ export default function ChatPage() {
                             }}
                         >
                             {/* 好友头像 */}
-                            {item.sender === 'friend' && <Avatar src={friendAvatar} />}
+                            {item.sender === 'friend' && <Avatar src={avatarMap[item.senderName]} />}
                             <Popover
                                 content={
                                     <Space direction="vertical">
@@ -459,7 +483,7 @@ export default function ChatPage() {
                             </Popover>
 
                             {/* 自己头像 */}
-                            {item.sender === 'me' && <Avatar src={myAvatar} />}
+                            {item.sender === 'me' && <Avatar src={avatarMap[currentUser]} />}
 
 
                         </List.Item>
