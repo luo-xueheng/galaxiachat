@@ -275,6 +275,7 @@ const Page = () => {
         ws_group_invite.onmessage = (event) => {
           const data = JSON.parse(event.data) as WsGroupMessage;
           if (data.type === "GroupUserReviewInvite") {
+
             // [TODO]
           }
           else if (data.type === "GroupAdminReviewInvite") {
@@ -317,7 +318,13 @@ const Page = () => {
     }
   };
   const sendFriendResponse = (request_id: string, response: "accept" | "reject") => {
-    if (ws_friend_request && ws_friend_request.readyState === WebSocket.OPEN) {
+    ws_friend_request = new WebSocket(
+      `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${localStorage.getItem("token")}`
+    );
+
+    ws_friend_request.onopen = () => {
+      console.log("✅ WebSocket 私聊连接已建立");
+
       ws_friend_request.send(JSON.stringify({ action: "respond_request", request_id, response }));
       const actionMsg = response === "accept" ? "已接受好友请求" : "已拒绝好友请求";
       alert(actionMsg);
@@ -331,26 +338,27 @@ const Page = () => {
       }
       //自动更新好友列表
       fetchFriends();
-    } else {
-      message.error("WebSocket 未连接，无法操作");
-    }
+
+    };
   };
 
   const sendGroupResponse = (invite_id: string, response: "accept" | "decline") => {
-    if (ws_friend_request && ws_friend_request.readyState === WebSocket.OPEN) {
+    ws_group_invite = new WebSocket(
+      `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/group-invite/?token=${localStorage.getItem("token")}`
+    );
+    ws_group_invite.onopen = () => {
+      console.log("✅ WebSocket 群聊连接已建立");
       ws_friend_request.send(JSON.stringify({ action: "respond_invite", invite_id, response }));
       const actionMsg = response === "accept" ? "已接受群聊邀请" : "已拒绝群聊邀请";
       alert(actionMsg);
       setPendingRequestsgroup(prev => prev.filter(r => r.invite_id !== invite_id));
       //向WebSocket 发送显示已读
-      if (ws_friend_request && ws_friend_request.readyState === WebSocket.OPEN) {
+      if (ws_group_invite && ws_group_invite.readyState === WebSocket.OPEN) {
         ws_friend_request.send(JSON.stringify({
           action: "acknowledge_invite",
           invite_id: invite_id,
         }));
       }
-    } else {
-      message.error("WebSocket 未连接，无法操作");
     }
   };
 
