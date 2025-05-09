@@ -160,14 +160,11 @@ export default function ChatPage() {
 
         const fetchHistoryMessages = async () => {
             try {
-                const url = new URL('https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/get_conversation_messages/');
-                url.searchParams.set('userName', currentUser);
-                url.searchParams.set('conversation_id', String(chatId));
-
-                const res = await fetch(url.toString(), {
-                    method: 'GET',
+                const token = localStorage.getItem("token");
+                const res = await fetch(`${BACKEND_URL}/api/get_conversation_messages/?userName=${currentUser}&conversation_id=${groupId}`, {
+                    method: "GET",
                     headers: {
-                        Authorization: `${currentUserToken}`,
+                        Authorization: `${token}`,
                     },
                 });
 
