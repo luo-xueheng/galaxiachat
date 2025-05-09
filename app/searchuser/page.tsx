@@ -150,14 +150,15 @@ const SearchUserPage: React.FC = () => {
       });
 
       const data = await res.json();
+      console.log("🔍 搜索结果：", data);
       const pendingList = getPendingRequests();
 
       if (data.users && Array.isArray(data.users)) {
         const merged = data.users.map((user: Friend) => ({
           ...user,
-          is_requested: !user.is_friend && pendingList.some(p => p.userName === user.userName),
+          // is_requested: !user.is_friend && pendingList.some(p => p.userName === user.userName),
         }));
-        cleanPendingList(data.users);
+        // cleanPendingList(data.users);
         setResults(merged);
       } else {
         message.warning('没有搜索结果');
@@ -201,21 +202,24 @@ const SearchUserPage: React.FC = () => {
   };
 
   const addFriend = async (item: Friend) => {
+    console.log("trying to add friend", item);
     try {
-      if (ws && ws.readyState === WebSocket.OPEN) {
+      ws = new WebSocket(
+        `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token)}`
+      );
+      ws.onopen = () => {
+        console.log('✅ WebSocket 连接已建立');
         ws.send(JSON.stringify({
           action: "send_request",
           userName: item.userName,
           request_type: "direct",
         }));
-      } else {
-        console.warn("⚠️ WebSocket 尚未连接");
       }
 
       ws.onmessage = (event) => {
         try {
           const response = JSON.parse(event.data);
-          //console.log("📤 发送申请响应：", event.data);
+          console.log("📤 发送申请响应：", event.data);
 
           if (response.status === "success") {
             alert(`好友请求已成功发送给 ${item.userName}`);
@@ -229,6 +233,9 @@ const SearchUserPage: React.FC = () => {
                 user.userName === item.userName ? { ...user, is_requested: true } : user
               )
             );
+          }
+          if (response.status === "error" && response.code === "request_exists") {
+            alert(`你已经向 ${item.userName} 发送了好友请求,不要重复发送！`);
           }
         } catch (e) {
           console.error('解析响应失败:', e);
@@ -314,9 +321,9 @@ const SearchUserPage: React.FC = () => {
                   <Button
                     type="primary"
                     onClick={() => addFriend(item)}
-                    disabled={item.is_friend || item.is_requested}
+                    disabled={item.is_friend}
                   >
-                    {item.is_friend ? "已添加" : item.is_requested ? "已申请" : "添加好友"}
+                    {item.is_friend ? "已添加" : "添加好友"}
                   </Button>
 
                   <Popover
