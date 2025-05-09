@@ -30,7 +30,7 @@ type groupmember = {
     is_requested: boolean;
 };
 
-let ws: WebSocket | null = null;
+
 
 const ChatGroupManagement = () => {
     const dispatch = useDispatch();
@@ -206,9 +206,8 @@ const ChatGroupManagement = () => {
     const addFriend = async (item: groupmember) => {
         getGroupMembers(); // 重新获取群成员列表
         try {
-            const token = localStorage.getItem("token");
-            ws = new WebSocket(
-                `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token)}`
+            const ws = new WebSocket(
+                `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(localStorage.getItem("token"))}`
             );
             ws.onopen = () => {
                 ws.send(JSON.stringify({
@@ -225,7 +224,9 @@ const ChatGroupManagement = () => {
                 try {
                     const response = JSON.parse(event.data);
                     console.log("📤 发送申请响应：", event.data);
-
+                    if (response.status === "error" && response.code === "request_exists") {
+                        alert("已发送过好友申请，请勿重复发送！")
+                    }
                     if (response.status === "success") {
                         alert(`好友请求已成功发送给 ${item.username}`);
                         const request_id = response.request_id;
@@ -481,7 +482,6 @@ const ChatGroupManagement = () => {
 
     useEffect(() => {
         const loadData = async () => {
-            fetchFriends(); // 获取好友列表
             await getGroupMembers(); // 获取群成员
         };
         loadData();
@@ -493,7 +493,37 @@ const ChatGroupManagement = () => {
         }
     }, [groupMembers]);  // 当 groupMembers 更新时调用 fetchFriends
 
+    useEffect(() => {
+        try {
+            const ws = new WebSocket(
+                `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(localStorage.getItem("token"))}`
+            );
+            ws.onerror = (e) => {
+                console.error("❌ WebSocket 连接错误", e);
+            };
 
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log("📨 收到 WebSocket 消息：", data);
+
+                if (data.type === "friend_request_response") {
+                    const { receiver_name, status } = data;
+
+                    alert(`${receiver_name} ${status === "accepted" ? '接受' : '拒绝'}了你的好友请求`);
+                }
+                // 👇 WebSocket 收到后立即响应（例如发送一个 acknowledge）
+                if (ws && ws.readyState === WebSocket.OPEN && data.type === "friend_request_response") {
+                    ws.send(JSON.stringify({
+                        action: "acknowledge",
+                        request_id: data.request_id,
+                    }));
+                }
+            };
+        } catch (error) {
+            alert('连接服务器失败，请稍后重试');
+        }
+
+    }, [dispatch, router]);
 
     const handleLeaveGroup = () => {
         const token = localStorage.getItem("token");
