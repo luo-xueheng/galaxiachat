@@ -25,6 +25,7 @@ import {
   LOGOUT_FAILED,
 } from "../constants/string";
 import { WsGroupMessage } from "../api";
+import { resolve } from "path";
 
 const { Panel } = Collapse;
 const { Title } = Typography;
@@ -51,6 +52,8 @@ type GroupRequest = {
   invite_id: string;
   group_name: string;
   inviter_name: string;
+  invitee_name: string;
+  notification_id: string;
 };
 
 let ws_friend_request: WebSocket | null = null;
@@ -64,7 +67,7 @@ const Page = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [uncategorized, setUncategorized] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
-  const [pendingRequestsgroup, setPendingRequestsgroup] = useState<GroupRequest[]>([]);
+  const [pendingRequestsgroupreview, setPendingRequestsgroupreview] = useState<GroupRequest[]>([]);
   const [availableGroups, setAvailableGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -213,7 +216,7 @@ const Page = () => {
 
         ws_friend_request.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          //console.log(data)
+          console.log("haoyoushenqing", data)
           if (data.type === "friend_request" && data.sender_name && data.request_id) {
             setPendingRequests((prev) => {
               if (prev.some((r) => r.request_id === data.request_id)) {
@@ -254,11 +257,11 @@ const Page = () => {
 
       return new Promise((resolve, reject) => {
         ws_group_invite = new WebSocket(
-          `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/group-invite/?token=${encodeURIComponent(token)}`
+          `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/notify/?token=${encodeURIComponent(token)}`
         );
 
         ws_group_invite.onopen = () => {
-          console.log("✅ WebSocket 连接已建立");
+          console.log("✅ WebSocket qunlioa连接已建立");
           resolve(ws_group_invite);
         };
 
@@ -273,10 +276,25 @@ const Page = () => {
         };
 
         ws_group_invite.onmessage = (event) => {
-          const data = JSON.parse(event.data) as WsGroupMessage;
-          if (data.type === "GroupUserReviewInvite") {
+          const data = JSON.parse(event.data);
+          console.log("群聊消息", data);
+          if (data.type === "group_invitation" && data.data.status === "pending_review") {
+            console.log("herependingreview")
+            setPendingRequestsgroupreview((prev) => {
+              if (prev.some((r) => r.invite_id === data.data.invite_id)) {
+                return prev; // 已存在，忽略
+              }
+              return [...prev, {
+                invite_id: data.data.invite_id,
+                group_name: data.data.group_name,
+                inviter_name: data.data.inviter_username,
+                invitee_name: data.data.invitee_username,
+                notification_id: data.notification_id,
+              }];
 
-            // [TODO]
+            });
+            console.log("pendinggroupreview" + pendingRequestsgroupreview)
+            // [TODO] //ok?
           }
           else if (data.type === "GroupAdminReviewInvite") {
             // [TODO]
@@ -342,31 +360,53 @@ const Page = () => {
     };
   };
 
-  const sendGroupResponse = (invite_id: string, response: "accept" | "decline") => {
-    ws_group_invite = new WebSocket(
-      `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/group-invite/?token=${localStorage.getItem("token")}`
-    );
-    ws_group_invite.onopen = () => {
-      console.log("✅ WebSocket 群聊连接已建立");
-      ws_friend_request.send(JSON.stringify({ action: "respond_invite", invite_id, response }));
-      const actionMsg = response === "accept" ? "已接受群聊邀请" : "已拒绝群聊邀请";
-      alert(actionMsg);
-      setPendingRequestsgroup(prev => prev.filter(r => r.invite_id !== invite_id));
-      //向WebSocket 发送显示已读
-      if (ws_group_invite && ws_group_invite.readyState === WebSocket.OPEN) {
-        ws_friend_request.send(JSON.stringify({
-          action: "acknowledge_invite",
-          invite_id: invite_id,
-        }));
-      }
-    }
+  const sendGroupResponseReview = (invite_id: string, notification_id: string, response: "approve" | "reject") => {
+    const token = localStorage.getItem("token");
+    fetch(`${BACKEND_URL}/api/admin-review`, {
+      method: "POST",
+      headers: {
+        Authorization: `${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        invite_id: invite_id,
+        action: response,
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (Number(res.code) === 0) {
+          alert("发送审核结果成功！" + response);
+          console.log(res);
+          console.log(pendingRequestsgroupreview);
+          setPendingRequestsgroupreview(prev => prev.filter(r => r.invite_id !== invite_id));
+          console.log("after")
+          console.log(pendingRequestsgroupreview);
+          ws_group_invite = new WebSocket(
+            `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/notify/?token=${localStorage.getItem("token")}`
+          );
+          setPendingRequestsgroupreview(prev => prev.filter(r => r.invite_id !== invite_id));
+          ws_group_invite.onopen = () => {
+            console.log("readytosend")
+            console.log(notification_id)
+            ws_group_invite.send(JSON.stringify({
+              action: "acknowledge",
+              notification_id: notification_id,
+            }));
+          };
+
+        }
+        else {
+          console.log("发送审核结果失败", res);
+        }
+      })
   };
 
   const handleAccept = (request_id: string) => sendFriendResponse(request_id, "accept");
   const handleReject = (request_id: string) => sendFriendResponse(request_id, "reject");
 
-  const handleAcceptgroup = (invite_id: string) => { sendGroupResponse(invite_id, "accept") };
-  const handleDeclinegroup = (invite_id: string) => { sendGroupResponse(invite_id, "decline") };
+  const handleAcceptgroupReview = (invite_id: string, notification_id: string) => { sendGroupResponseReview(invite_id, notification_id, "approve") };
+  const handleDeclinegroupReview = (invite_id: string, notification_id: string) => { sendGroupResponseReview(invite_id, notification_id, "reject") };
 
   const handleDelete = async (userNameToDelete: string, groupId?: string) => {
     const token = localStorage.getItem("token");
@@ -650,7 +690,7 @@ const Page = () => {
           />
         </div>
       )}
-      {pendingRequestsgroup.length > 0 && (
+      {pendingRequestsgroupreview.length > 0 && (
         <div
           style={{
             background: "#fffbe6",
@@ -659,32 +699,32 @@ const Page = () => {
             border: "1px solid #ffe58f",
           }}
         >
-          <Title level={4}>待处理群聊邀请</Title>
+          <Title level={4}>待处理群审核</Title>
           <List
-            dataSource={pendingRequestsgroup}
+            dataSource={pendingRequestsgroupreview}
             renderItem={(request) => (
               <List.Item
                 actions={[
                   <Button
-                    key="accept"
+                    key="approve"
                     type="link"
-                    onClick={() => handleAcceptgroup(request.invite_id)}
+                    onClick={() => handleAcceptgroupReview(request.invite_id, request.notification_id)}
                   >
                     接受
                   </Button>,
                   <Button
-                    key="decline"
+                    key="reject"
                     type="link"
                     danger
-                    onClick={() => handleDeclinegroup(request.invite_id)}
+                    onClick={() => handleDeclinegroupReview(request.invite_id, request.notification_id)}
                   >
                     拒绝
                   </Button>,
                 ]}
               >
                 <List.Item.Meta
-                  title={request.inviter_name}
-                  description={`${request.inviter_name}邀请你加入群聊 ${request.group_name}`}
+                  title={request.group_name}
+                  description={`${request.inviter_name}邀请${request.invitee_name}加入群聊 ${request.group_name}`}
                 />
               </List.Item>
             )}
