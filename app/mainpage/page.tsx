@@ -68,6 +68,7 @@ const Page = () => {
   const [uncategorized, setUncategorized] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [pendingRequestsgroupreview, setPendingRequestsgroupreview] = useState<GroupRequest[]>([]);
+  const [pendingRequestsgroupinvitee, setPendingRequestsgroupinvitee] = useState<GroupRequest[]>([]);
   const [availableGroups, setAvailableGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -294,13 +295,33 @@ const Page = () => {
 
             });
             console.log("pendinggroupreview" + pendingRequestsgroupreview)
-            // [TODO] //ok?
           }
-          else if (data.type === "GroupAdminReviewInvite") {
+          else if (data.type === "group_invitation" && data.data.status === "approved") {
+            setPendingRequestsgroupinvitee((prev) => {
+              if (prev.some((r) => r.invite_id === data.data.invite_id)) {
+                return prev; // 已存在，忽略
+              }
+              return [...prev, {
+                invite_id: data.data.invite_id,
+                group_name: data.data.group_name,
+                inviter_name: data.data.inviter_username,
+                invitee_name: localStorage.getItem("userName"),
+                notification_id: data.notification_id,
+              }];
+
+            });
+
             // [TODO]
           }
-          else if (data.type === "GroupRemoveMe") {
+          else if (data.type === "remove") {
             // [TODO]
+            handle_removed(data.notification_id);
+            alert("你已被移除出群聊" + data.data.group_name);
+          }
+          else if (data.type === "set_admin") {
+            // [TODO]
+            handle_set_admin(data.notification_id);
+            alert("你已被设置为群聊管理员" + data.data.group_name);
           }
         };
       });
@@ -402,12 +423,77 @@ const Page = () => {
       })
   };
 
+  const sendGroupResponseInvitee = (invite_id: string, notification_id: string, response: "accept" | "decline") => {
+    const token = localStorage.getItem("token");
+    fetch(`${BACKEND_URL}/api/respond-invite`, {
+      method: "POST",
+      headers: {
+        Authorization: `${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        invite_id: invite_id,
+        action: response,
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (Number(res.code) === 0) {
+          alert("响应邀请成功" + response);
+          setPendingRequestsgroupinvitee(prev => prev.filter(r => r.invite_id !== invite_id));
+          ws_group_invite = new WebSocket(
+            `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/notify/?token=${localStorage.getItem("token")}`
+          );
+          setPendingRequestsgroupreview(prev => prev.filter(r => r.invite_id !== invite_id));
+          ws_group_invite.onopen = () => {
+            console.log(notification_id)
+            ws_group_invite.send(JSON.stringify({
+              action: "acknowledge",
+              notification_id: notification_id,
+            }));
+          };
+
+        }
+        else {
+          console.log("发送审核结果失败", res);
+        }
+      })
+  };
+
   const handleAccept = (request_id: string) => sendFriendResponse(request_id, "accept");
   const handleReject = (request_id: string) => sendFriendResponse(request_id, "reject");
 
   const handleAcceptgroupReview = (invite_id: string, notification_id: string) => { sendGroupResponseReview(invite_id, notification_id, "approve") };
   const handleDeclinegroupReview = (invite_id: string, notification_id: string) => { sendGroupResponseReview(invite_id, notification_id, "reject") };
 
+
+  const handleAcceptgroupInvitee = (invite_id: string, notification_id: string) => { sendGroupResponseInvitee(invite_id, notification_id, "accept") };
+  const handleDeclinegroupInvitee = (invite_id: string, notification_id: string) => { sendGroupResponseInvitee(invite_id, notification_id, "decline") };
+
+  const handle_removed = (notification_id: string) => {
+    ws_group_invite = new WebSocket(
+      `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/notify/?token=${localStorage.getItem("token")}`
+    );
+    ws_group_invite.onopen = () => {
+      console.log(notification_id)
+      ws_group_invite.send(JSON.stringify({
+        action: "acknowledge",
+        notification_id: notification_id,
+      }));
+    }
+  }
+  const handle_set_admin = (notification_id: string) => {
+    ws_group_invite = new WebSocket(
+      `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/notify/?token=${localStorage.getItem("token")}`
+    );
+    ws_group_invite.onopen = () => {
+      console.log(notification_id)
+      ws_group_invite.send(JSON.stringify({
+        action: "acknowledge",
+        notification_id: notification_id,
+      }));
+    }
+  }
   const handleDelete = async (userNameToDelete: string, groupId?: string) => {
     const token = localStorage.getItem("token");
     try {
@@ -717,6 +803,48 @@ const Page = () => {
                     type="link"
                     danger
                     onClick={() => handleDeclinegroupReview(request.invite_id, request.notification_id)}
+                  >
+                    拒绝
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={request.group_name}
+                  description={`${request.inviter_name}邀请${request.invitee_name}加入群聊 ${request.group_name}`}
+                />
+              </List.Item>
+            )}
+          />
+        </div>
+      )}
+
+      {pendingRequestsgroupinvitee.length > 0 && (
+        <div
+          style={{
+            background: "#fffbe6",
+            padding: 16,
+            borderRadius: 8,
+            border: "1px solid #ffe58f",
+          }}
+        >
+          <Title level={4}>待处理进群邀请</Title>
+          <List
+            dataSource={pendingRequestsgroupinvitee}
+            renderItem={(request) => (
+              <List.Item
+                actions={[
+                  <Button
+                    key="accept"
+                    type="link"
+                    onClick={() => handleAcceptgroupInvitee(request.invite_id, request.notification_id)}
+                  >
+                    接受
+                  </Button>,
+                  <Button
+                    key="decline"
+                    type="link"
+                    danger
+                    onClick={() => handleDeclinegroupInvitee(request.invite_id, request.notification_id)}
                   >
                     拒绝
                   </Button>,
