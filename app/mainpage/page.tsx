@@ -163,7 +163,7 @@ const Page = () => {
         body: JSON.stringify({ group_name: selectedGroupId }),
       });
       const data = await res.json();
-
+      console.log("删除分组返回" + data)
       if (data.code === 0) {
         message.success("删除成功");
         // 更新分组列表

@@ -48,7 +48,7 @@ const ChatGroupManagement = () => {
     const groupId = searchParams.get("groupId"); // 获取当前群聊的id
     const [adminList, setAdminList] = useState<string[]>([]);
     const [creator, setcreator] = useState<string>(""); // 创建者
-    const [currentUserRole, setCurrentUserRole] = useState("member");
+    const [currentUserRole, setCurrentUserRole] = useState("");
     const [historyAnnounceList, setHistoryAnnounceList] = useState<announcelist[]>([]); // 历史公告列表
     const [allFriends, setAllFriends] = useState<Friend[]>([]); // 所有好友列表
     // 定义用于保存公告的 state
@@ -144,7 +144,7 @@ const ChatGroupManagement = () => {
         }
 
         const currentUserName = localStorage.getItem("userName");
-        let currentUserRole = "member"; // 默认是普通成员
+        let currentUserRole = "normal"; // 默认是普通成员
 
 
         // 加入普通成员
