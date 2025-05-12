@@ -1,26 +1,20 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
-import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image } from 'antd';
-import { SmileOutlined, PictureOutlined, CaretRightFilled } from '@ant-design/icons';
-import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined } from '@ant-design/icons';
-import { Drawer } from 'antd';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image, Modal, Dropdown, Menu } from 'antd';
+import { SmileOutlined, PictureOutlined, EllipsisOutlined, TeamOutlined } from '@ant-design/icons';
+import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined, MessageOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
-import { BACKEND_URL } from "../../constants/string";
-import { useRouter } from 'next/navigation';
-import { group } from 'console';
 
-
-
-const emojiList = ['😊', '😂', '🥰', '👍', '🎉', '😢', '😡', '❤️', '👏']; // 表情列表
+const emojiList = ['😊', '😂', '🥰', '😢', '😎', '👍', '🎉', '😡', '❤️', '👏']; // 表情列表
 
 type MsgType = 'text' | 'emoji' | 'image'; // 消息类型
 interface ChatMessage {
     id: number;                 // msg_id
-    sender: 'me' | 'friend';    // 判断 sender_name 是否是自己
-    senderName: string;       // 发送者的用户名
+    sender: string;             // 发送者用户名
     msgType: MsgType;           // 消息类型
     content: string;            // 消息内容
     timestamp: string;          // 格式化后的 created_at
@@ -31,140 +25,104 @@ interface ChatMessage {
 }
 
 export default function ChatPage() {
-    const params = useParams();
-    const searchParams = useSearchParams();
 
     const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
     const currentUserToken = localStorage.getItem("token"); // 获取当前用户的token
-    // const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
-    // const friendUserName = localStorage.getItem("currentChatFriendUserName"); // 获取当前用户的用户名
-    // const groupname = localStorage.getItem("currentChatGroupName"); // 获取当前群聊的名称
-    // const groupId = localStorage.getItem("currentChatGroupId"); // 获取当前群聊的ID
-    // const isGroupChat = localStorage.getItem("isGroupChat"); // 判断是否是群聊
-    const friendUserName = searchParams.get("currentChatFriendUserName"); // 获取当前用户的用户名
-    const groupname = searchParams.get("currentChatGroupName"); // 获取当前群聊的名称
-    // const groupId = searchParams.get("currentChatGroupId"); // 获取当前群聊的ID
-    const isGroupChat = searchParams.get("isGroupChat"); // 判断是否是群聊
-    const { chatId } = useParams(); // 获取路由中的chatId
-    const groupIdRaw = chatId;
-    const groupId = Array.isArray(groupIdRaw) ? groupIdRaw[0] : groupIdRaw;
-    console.log("当前聊天ID: ", chatId);
-
     console.log("当前用户: ", currentUser);
     console.log("当前用户token: ", currentUserToken);
-    console.log("好友: ", friendUserName);
-    const [drawerOpen, setDrawerOpen] = useState(false);
 
-    const showDrawer = () => setDrawerOpen(true);
-    const closeDrawer = () => setDrawerOpen(false);
-    const router = useRouter();
-    /*
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        {
-            id: 997,
-            sender: 'friend',
-            content: '你好呀～',
-            timestamp: '2025-05-03 10:00',
-        },
-        {
-            id: 998,
-            sender: 'me',
-            content: '嗨！最近怎么样？',
-            timestamp: '2025-05-03 10:01',
-            isRead: true, // 模拟已读
-        },
-        {
-            id: 999,
-            sender: 'me',
-            content: '今天有空出来玩嘛？',
-            timestamp: '2025-05-03 10:05',
-            isRead: false, // 模拟未读
-        },
-    ]);
-    */
+    const searchParams = useSearchParams();
+    const conversationId = Number(searchParams.get('chatId')); // 获取当前聊天的会话ID
+    console.log("当前会话ID: ", conversationId);
+    const isGroupChat = searchParams.get('isGroupChat') === 'true'; // 判断是否是群聊
+    console.log("当前是否是群聊: ", isGroupChat);
 
-    const [input, setInput] = useState('');
-    const messageEndRef = useRef<HTMLDivElement>(null);
+    if (!isGroupChat) {
+        const friendUserName = searchParams.get('friendUserName'); // 获取当前聊天的好友用户名
+        console.log("当前聊天的好友用户名: ", friendUserName);
+    } else {
+        const groupName = searchParams.get('groupName'); // 获取当前聊天的群组名
+        console.log("当前聊天的群组名: ", groupName);
+    }
+    // 此后无法直接获取到 friendUserName 和 groupName的值，需重新从params中获取
+    const friendUserName = searchParams.get('friendUserName'); // 获取当前聊天的好友用户名
+    const groupName = searchParams.get('groupName');           // 获取当前聊天的群组名
 
-    const scrollToBottom = () => {
-        messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);
-    const [friendAvatar, setFriendAvatar] = useState<string | undefined>(undefined);
-    const [avatarMap, setAvatarMap] = useState<Record<string, string | null>>({});
-
+    // 🎯 获取头像
+    const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);         // 我的头像
+    const [friendAvatar, setFriendAvatar] = useState<string | undefined>(undefined); // 好友头像
+    const [groupAvatars, setGroupAvatars] = useState<Record<string, string>>({});    // 群聊头像列表
     useEffect(() => {
         const fetchAvatars = async () => {
-            if (!currentUser) return;
+            try {
+                const fetchUserAvatar = async (userName: string): Promise<string | undefined> => {
+                    const response = await fetch('/api/user/' + userName, {
+                        method: 'GET',
+                    });
 
-            // 1. 构建要拉取头像的用户名列表
-            const usernames = [currentUser];
-            if (!isGroupChat && friendUserName) {
-                usernames.push(friendUserName);
-            }
-            if (isGroupChat && groupname) {
+                    if (!response.ok) throw new Error('获取头像失败');
 
-                const token = localStorage.getItem("token");
-                const res = await fetch(`${BACKEND_URL}/api/group-info?conversation_id=${groupId}`, {
-                    method: "GET",
-                    headers: {
-                        Authorization: `${token}`,
-                    },
-                });
-                const data = await res.json();
-                const targetGroup = data.groups?.[groupId];
-                console.log("dataformembers:", data);
-                console.log('targetGroup:', targetGroup);
-                for (const user of targetGroup.members || []) {
-                    usernames.push(user.username);
-                }
-            }
-            console.log('要拉取头像的用户名列表:', usernames);
-            // 2. 针对每个 username，调用 fetchUserAvatar
-            const fetchUserAvatar = async (userName: string): Promise<string | null> => {
-                try {
-                    const res = await fetch('/api/user/' + userName);
-                    if (!res.ok) throw new Error();
-                    const data = await res.json();
+                    const data = await response.json();
+                    console.log("用户头像获取成功", userName, data.avatar);
                     return data.avatar;
-                } catch {
-                    return null;
+                };
+
+                if (!isGroupChat) {
+                    // 私聊模式
+                    const [myAvatar, friendAvatar] = await Promise.all([
+                        fetchUserAvatar(currentUser!),
+                        fetchUserAvatar(friendUserName as string),
+                    ]);
+                    setMyAvatar(myAvatar);
+                    setFriendAvatar(friendAvatar);
+                } else {
+                    // 群聊模式
+                    const response = await fetch(`/api/get_conversation_detail/?conversation_id=${conversationId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': currentUserToken!,
+                        }
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+                    const data = await response.json();
+                    const members = data.members;
+
+                    const avatarMap: Record<string, string> = {};
+                    members.forEach((member: any) => {
+                        avatarMap[member.username] = member.avatar.startsWith('/media')
+                            ? `https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${member.avatar}`
+                            : member.avatar;
+                    });
+                    console.log("群聊头像获取成功", avatarMap);
+                    setGroupAvatars(avatarMap);
                 }
-            };
-
-            // 3. 并行拉取所有头像
-            const avatars = await Promise.all(usernames.map(u => fetchUserAvatar(u)));
-
-            console.log('拉取的suoyou头像:', avatars);
-
-            // 4. 构建一个 map：{ user1: avatar1, user2: avatar2, ... }
-            const newMap: Record<string, string | null> = {};
-            usernames.forEach((u, i) => {
-                newMap[u] = avatars[i];
-            });
-
-            // 5. 写入 state
-            setAvatarMap(newMap);
+            } catch (err) {
+                console.error('加载头像失败: ', err);
+                alert('无法加载头像，请检查网络或登录状态');
+            }
         };
 
         fetchAvatars();
-    }, []);
+    }, [searchParams, currentUser]);
 
+    // 🎯 拉取历史消息
     const [messages, setMessages] = useState<ChatMessage[]>([]); // 初始化为空数组
-    const [socket, setSocket] = useState<WebSocket | null>(null);
-
-    // ✅ 拉取历史消息
     useEffect(() => {
-        if (!chatId || !currentUser || !currentUserToken) return;
+        if (!conversationId || !currentUser || !currentUserToken) return;
 
         const fetchHistoryMessages = async () => {
             try {
-                const token = localStorage.getItem("token");
-                const res = await fetch(`${BACKEND_URL}/api/get_conversation_messages/?userName=${currentUser}&conversation_id=${groupId}`, {
-                    method: "GET",
+                const url = new URL('https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/get_conversation_messages/');
+                url.searchParams.set('userName', currentUser);
+                url.searchParams.set('conversation_id', String(conversationId));
+
+                const res = await fetch(url.toString(), {
+                    method: 'GET',
                     headers: {
-                        Authorization: `${token}`,
+                        Authorization: `${currentUserToken}`,
                     },
                 });
 
@@ -177,25 +135,20 @@ export default function ChatPage() {
                 console.log('获取历史消息成功:', data); // 🟢 打印获取的历史消息
 
                 const historyMessages: ChatMessage[] = data.messages.map((msg: any) => {
-                    const isMe = msg.sender_name === currentUser;
-
                     return {
                         id: msg.msg_id,
-                        sender: isMe ? 'me' : 'friend',
-                        senderName: msg.sender_name,
+                        sender: msg.sender_name,
                         msgType: msg.msg_type as MsgType,
                         content:
                             msg.msg_type === 'image'
                                 ? `${msg.content}`
                                 : msg.content,
                         timestamp: new Date(msg.created_at * 1000).toLocaleString(),
+                        replyToId: msg.reply_to?.msg_id ?? null,
                         isRead: msg.is_read,
                         readBy: msg.read_by,
                     };
                 });
-
-                // 排序：确保是从早到晚
-                // historyMessages.sort((a, b) => a.id - b.id);
 
                 setMessages(historyMessages);
             } catch (error) {
@@ -204,17 +157,18 @@ export default function ChatPage() {
         };
 
         fetchHistoryMessages();
-    }, [chatId, currentUser, currentUserToken]);
+    }, [conversationId, currentUser, currentUserToken]);
 
-    // ✅ 建立 WebSocket 连接，监听新消息
+    // 🎯 建立 WebSocket 连接，监听新消息
+    const [socket, setSocket] = useState<WebSocket | null>(null);
     useEffect(() => {
-        if (!chatId || !currentUserToken) {
+        if (!conversationId || !currentUserToken) {
             console.warn('[WebSocket] 缺少必要参数，终止连接');
             return;
         }
 
         const ws = new WebSocket(
-            `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/chat/${chatId}/?token=${currentUserToken}`
+            `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/chat/${conversationId}/?token=${currentUserToken}`
         );
 
         ws.onopen = () => {
@@ -229,24 +183,21 @@ export default function ChatPage() {
 
                 if (data.action === 'new_message') {
                     const msg = data.message;
-                    const isMe = msg.sender_name === currentUser;
-
                     const newMessage: ChatMessage = {
                         id: msg.msg_id,
-                        sender: isMe ? 'me' : 'friend',
-                        senderName: msg.sender_name,
+                        sender: msg.sender_name,
                         msgType: msg.msg_type as MsgType,
                         content:
                             msg.msg_type === 'image'
                                 ? `https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${msg.content}`
                                 : msg.content,
                         timestamp: new Date(msg.created_at * 1000).toLocaleString(),
+                        replyToId: msg.reply_to?.msg_id ?? null,
                         isRead: msg.is_read,
                         readBy: msg.read_by,
                     };
                     // 新消息插到前面
                     setMessages(prev => [newMessage, ...prev]);
-                    // setMessages((prev) => [...prev, newMessage]);
                 }
             } catch (err) {
                 console.error('[WebSocket] 消息解析失败：', err);
@@ -267,12 +218,20 @@ export default function ChatPage() {
             console.log('[WebSocket] 正在关闭连接...');
             ws.close();
         };
-    }, [chatId, currentUserToken, currentUser]);
+    }, [conversationId, currentUserToken, currentUser]);
 
+    // ✅ 滚动到底部
+    const messageEndRef = useRef<HTMLDivElement>(null);
+    const scrollToBottom = () => {
+        messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
+    // 🎯 发送消息(含回复)
+    const [input, setInput] = useState('');
+    const [replyToId, setReplyToId] = useState<number | null>(null);
     const handleSend = () => {
         console.log('[handleSend] 触发发送');
 
@@ -286,45 +245,46 @@ export default function ChatPage() {
             return;
         }
 
-        const messagePayload = {
+        const messagePayload: any = {
             action: 'send_message',
             msg_type: 'text',
             content: input,
         };
 
+        if (replyToId !== null) {
+            messagePayload.reply_to = replyToId;
+        }
+
         console.log('[handleSend] 发送内容：', messagePayload);
         socket.send(JSON.stringify(messagePayload));
-
-        /*/ 🟢 立刻加一条本地“临时消息”，避免页面刷新后没保存
-        const tempId = -Date.now(); // ✅ 负数临时 ID
-        const newMessage: ChatMessage = {
-            id: tempId, // 临时 ID，后续收到正式的 new_message 会覆盖
-            sender: 'me',
-            msgType: 'text',
-            content: input,
-            timestamp: new Date().toLocaleString(),
-            isRead: true,
-            readBy: [],
-        };
-
-        setMessages((prev) => [...prev, newMessage]);*/
-        setInput('');
+        setInput('');       // 清空输入框
+        setReplyToId(null); // 发送完清除回复状态
     };
 
-    const handleReply = () => {
-
+    // ✅ 显示被回复消息的内容
+    const replyingMessage = useMemo(
+        () => messages.find((msg) => msg.id === replyToId) || null,
+        [replyToId, messages]
+    );
+    // 🎯 回复消息
+    const handleReply = (msgId: number) => {
+        setReplyToId(msgId);
+        console.log('[handleReply] 正在回复消息 ID:', msgId);
     };
 
-    const handleSendEmoji = (emoji: string) => {
-        if (!socket || socket.readyState !== WebSocket.OPEN) return;
-
-        socket.send(JSON.stringify({
-            action: 'send_message',
-            msg_type: 'emoji',
-            content: emoji,
-        }));
+    // 🎯 滚动到指定消息
+    const scrollToMessage = (msgId: number) => {
+        const element = document.getElementById(`msg-${msgId}`);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.style.backgroundColor = '#e6f7ff';
+            setTimeout(() => {
+                element.style.backgroundColor = 'transparent';
+            }, 1500);
+        }
     };
 
+    // 🎯 发送表情
     const emojiContent = (
         <div style={{ display: 'flex', flexWrap: 'wrap', maxWidth: 200 }}>
             {emojiList.map((emoji) => (
@@ -338,52 +298,89 @@ export default function ChatPage() {
             ))}
         </div>
     );
+    const handleSendEmoji = (emoji: string) => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) return;
 
-    const handleSendImage = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/png, image/jpeg';
+        socket.send(JSON.stringify({
+            action: 'send_message',
+            msg_type: 'emoji',
+            content: emoji,
+        }));
+    };
 
-        input.onchange = async () => {
-            const file = input.files?.[0];
-            if (!file) return;
+    // 🎯 删除消息
+    const handleDelete = async (msgId: number) => {
+        if (!currentUserToken || !currentUser) {
+            console.error("未获取到用户信息，无法删除消息");
+            return;
+        }
+        try {
+            const response = await fetch("https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/delete_message/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: currentUserToken,
+                },
+                body: JSON.stringify({
+                    userName: currentUser,
+                    conversation_id: conversationId,
+                    msg_ids: [msgId],
+                }),
+            });
 
-            if (file.size > 10 * 1024 * 1024) {
-                alert('图片不能超过10MB');
-                return;
+            const result = await response.json();
+
+            if (result.code === 0) {
+                console.log("删除成功：", result);
+                setMessages((prev) => prev.filter((msg) => msg.id !== msgId));
+            } else {
+                console.warn("删除失败：", result);
             }
 
-            const reader = new FileReader();
-            reader.onload = () => {
-                const base64 = reader.result as string;
-
-                if (socket?.readyState !== WebSocket.OPEN) {
-                    alert('WebSocket 未连接');
-                    return;
-                }
-
-                socket.send(
-                    JSON.stringify({
-                        action: 'send_message',
-                        msg_type: 'image',
-                        content: base64,
-                    })
-                );
-
-                console.log('[图片已发送]', base64.slice(0, 100) + '...');
-            };
-
-            reader.readAsDataURL(file);
-        };
-
-        input.click();
+        } catch (error) {
+            console.error("删除请求出错：", error);
+        }
     };
+
+    // 🎯 查找聊天记录
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [filteredMessages, setFilteredMessages] = useState<ChatMessage[]>([]);
+    const [searchSender, setSearchSender] = useState('');
+    const [searchStartDate, setSearchStartDate] = useState<string | undefined>();
+    const [searchEndDate, setSearchEndDate] = useState<string | undefined>();
+    // ✅ 打开聊天记录模态框
+    const openModal = () => {
+        console.log('openModal');
+        setIsModalOpen(true);
+        setFilteredMessages(messages); // 初始展示所有
+    };
+    // 设置筛选条件
+    const handleFilter = () => {
+        const result = messages.filter((msg) => {
+            const matchSender = !searchSender || msg.sender.includes(searchSender);
+            const matchTime = isWithinDateRange(msg.timestamp, searchStartDate, searchEndDate);
+            return matchSender && matchTime;
+        });
+        setFilteredMessages(result);
+    };
+    // 判断消息时间是否在范围内
+    const isWithinDateRange = (msgTime: string, start?: string, end?: string) => {
+        const time = new Date(msgTime).getTime();
+        const startTime = start ? new Date(start).getTime() : -Infinity;
+        const endTime = end ? new Date(end).getTime() : Infinity;
+        return time >= startTime && time <= endTime;
+    };
+
+    // 🎯 跳转到群聊管理
+    const router = useRouter();
+    //const groupIdRaw = conversationId;
+    //const groupId = Array.isArray(groupIdRaw) ? groupIdRaw[0] : groupIdRaw;
     const handleChatGroupManagement = () => {
-        const groupIdValue = Array.isArray(groupId) ? groupId[0] : groupId;
+        //const groupIdValue = Array.isArray(groupId) ? groupId[0] : groupId;
         const query = new URLSearchParams({
             isGroupChat: "true",
-            currentChatGroupName: groupname,
-            groupId: groupIdValue
+            currentChatGroupName: groupName,
+            groupId: conversationId.toString(),
         }).toString();
 
         router.push(`/chatgroupmanagement?${query}`);
@@ -391,105 +388,249 @@ export default function ChatPage() {
 
     console.log("is group chat: ", isGroupChat);
 
+
     return (
         <Layout style={{ height: '100vh' }}>
-            <Header style={{ background: '#fff', padding: '0 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text strong>
-                        {isGroupChat === 'true' ? groupname : friendUserName}
-                    </Text>
+            {/* 头部: 聊天名称、群聊管理、查找聊天记录 */}
+            <Header style={{
+                background: '#fff',
+                padding: '0 16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+            }}>
 
-                    {isGroupChat === 'true' && (
-                        <Button type="link" onClick={() => handleChatGroupManagement()} >
-                            群聊管理
-                        </Button>
-                    )}
-                </div>
+                <Text strong>{isGroupChat ? groupName : friendUserName}</Text>
+                <Dropdown
+                    overlay={
+                        <Menu>
+                            {isGroupChat && (
+                                <Menu.Item key="group-management" onClick={() => handleChatGroupManagement()}>
+                                    <TeamOutlined style={{ marginRight: 8 }} />
+                                    群聊管理
+                                </Menu.Item>
+                            )}
+                            <Menu.Item key="search-history" onClick={openModal}>
+                                <SearchOutlined style={{ marginRight: 8 }} />
+                                查找聊天记录
+                            </Menu.Item>
+                        </Menu>
+                    }
+                    trigger={['click']}
+                >
+                    <Button type="default" icon={<EllipsisOutlined />} />
+
+                </Dropdown>
             </Header>
 
+            {/* 查找聊天记录模态框 */}
+            <Modal
+                title="查找聊天记录"
+                open={isModalOpen}
+                onCancel={() => setIsModalOpen(false)}
+                footer={null}
+                width={600}
+                styles={{
+                    body: {
+                        maxHeight: '60vh',
+                        overflowY: 'auto',
+                    },
+                }}
+            >
+                <div style={{ marginBottom: 16 }}>
+                    <Input
+                        placeholder="按发送人筛选"
+                        value={searchSender}
+                        onChange={(e) => setSearchSender(e.target.value)}
+                        style={{ marginBottom: 8 }}
+                    />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                            type="date"
+                            onChange={(e) => setSearchStartDate(e.target.value)}
+                            value={searchStartDate}
+                        />
+                        <input
+                            type="date"
+                            onChange={(e) => setSearchEndDate(e.target.value)}
+                            value={searchEndDate}
+                        />
+                        <Button onClick={handleFilter}>筛选</Button>
+                    </div>
+                </div>
 
+                <List
+                    size="small"
+                    dataSource={filteredMessages}
+                    renderItem={(msg) => (
+                        <List.Item>
+                            <div>
+                                <div><strong>{msg.sender}</strong> [{formatDate(msg.timestamp)}]</div>
+                                <div>{msg.content}</div>
+                            </div>
+                        </List.Item>
+                    )}
+                />
+            </Modal>
+
+            {/* 聊天内容区域 */}
+            {/* 这里使用了一个 div 包裹 List.Item，给每个消息添加了一个唯一的 id */}
+            {/* 这样在点击消息时可以滚动到对应的消息位置 */}
             <Content style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
                 <List
-                    dataSource={[...messages].reverse()}  // ✅ 注意：不要直接 reverse(messages)，要复制一份
+                    dataSource={[...messages].reverse()}  // ⚠️ 不要直接 reverse(messages)，要复制一份
                     renderItem={(item) => (
-                        <List.Item
-                            style={{
-                                justifyContent: item.sender === 'me' ? 'flex-end' : 'flex-start',
-                            }}
-                        >
-                            {/* 好友头像 */}
-                            {item.sender === 'friend' && <Avatar src={avatarMap[item.senderName]} />}
-                            <Popover
-                                content={
-                                    <Space direction="vertical">
-                                        <Button type="link" size="small" onClick={() => handleReply()}>
-                                            回复
-                                        </Button>
-                                        {/* 其他操作可以继续加 */}
-                                    </Space>
-                                }
-                                trigger="contextMenu"
+                        <div id={`msg-${item.id}`}>
+                            <List.Item
+                                style={{
+                                    justifyContent: item.sender === currentUser ? 'flex-end' : 'flex-start',
+                                }}
                             >
-                                <Space
-                                    align="end"
-                                    style={{
-                                        maxWidth: '70%',
-                                        background: item.sender === 'me' ? '#cfe9ff' : '#ffffff',
-                                        padding: '8px 12px',
-                                        borderRadius: '16px',
-                                        flexDirection: 'column',
-                                        alignItems: item.sender === 'me' ? 'flex-end' : 'flex-start',
-                                    }}
+                                {/* 好友头像 */}
+                                {item.sender != currentUser && (
+                                    <Avatar
+                                        src={
+                                            isGroupChat
+                                                ? groupAvatars[item.sender]
+                                                : friendAvatar
+                                        }
+                                    />
+                                )}
+
+                                {/* 右键菜单: 回复和删除 */}
+                                <Popover
+                                    content={
+                                        <Space direction="horizontal" size="small">
+                                            <Button type="link" size="small" onClick={() => handleReply(item.id)}
+                                                icon={<MessageOutlined />}>
+                                                回复
+                                            </Button>
+
+                                            <Button type="link" size="small"
+                                                onClick={() => handleDelete(item.id)}
+                                                icon={<DeleteOutlined />}
+                                                danger  // 删除操作通常会加danger属性让按钮变红
+                                            >
+                                                删除
+                                            </Button>
+                                        </Space>
+                                    }
+                                    trigger="contextMenu"
                                 >
-                                    {/* 消息内容 */}
-                                    <div>
-                                        {item.msgType === 'emoji' ? (
-                                            <span style={{ fontSize: 36, marginLeft: 4 }}>{item.content}</span>
-                                        ) : item.msgType === 'image' ? (
-                                            <Image
-                                                src={item.content}
-                                                alt="图片消息"
-                                                style={{ maxWidth: 200, borderRadius: 8 }}
-                                                preview={{
-                                                    mask: '点击预览',
+
+                                    {/* 消息气泡 */}
+                                    <Space
+                                        align="end"
+                                        style={{
+                                            maxWidth: '70%',
+                                            background: item.sender === currentUser ? '#cfe9ff' : '#ffffff',
+                                            padding: '8px 12px',
+                                            borderRadius: '16px',
+                                            flexDirection: 'column',
+                                            alignItems: item.sender === currentUser ? 'flex-end' : 'flex-start',
+                                        }}
+                                    >
+
+                                        {/* 回复的消息内容 */}
+                                        {item.replyToId && (
+                                            <div
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    marginBottom: '4px',
+                                                    backgroundColor: '#fafafa',
+                                                    borderLeft: '3px solid #d9d9d9',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
                                                 }}
-                                                placeholder
-                                            />
-                                        ) : (
-                                            <span>{item.content}</span>
+                                                onClick={() => scrollToMessage(item.replyToId!)}
+                                            >
+                                                回复 @{messages.find((msg) => msg.id === item.replyToId)?.sender}
+                                                ：{messages.find((msg) => msg.id === item.replyToId)?.content.slice(0, 30) || '（内容已丢失）'}
+                                            </div>
                                         )}
-                                    </div>
 
-                                    {/* 消息时间和已读状态 */}
-                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                        {item.sender === 'me' && (
-                                            item.isRead ? (
-                                                <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
+                                        {/* 发送的消息内容 */}
+                                        <div>
+                                            {item.msgType === 'emoji' ? (
+                                                <span style={{ fontSize: 36, marginLeft: 4 }}>{item.content}</span>
+                                            ) : item.msgType === 'image' ? (
+                                                <Image
+                                                    src={item.content}
+                                                    alt="图片消息"
+                                                    style={{ maxWidth: 200, borderRadius: 8 }}
+                                                    preview={{
+                                                        mask: '点击预览',
+                                                    }}
+                                                    placeholder
+                                                />
                                             ) : (
-                                                <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
-                                            )
-                                        )}
+                                                <span>{item.content}</span>
+                                            )}
+                                        </div>
 
-                                        <Text type="secondary" style={{ fontSize: '0.75em' }}>
-                                            {item.timestamp}
-                                        </Text>
+                                        {/* 消息时间和已读状态 */}
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                            {item.sender === currentUser && (
+                                                item.isRead ? (
+                                                    <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
+                                                ) : (
+                                                    <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
+                                                )
+                                            )}
 
-                                    </div>
+                                            <Text type="secondary" style={{ fontSize: '0.75em' }}>
+                                                {item.timestamp}
+                                            </Text>
+                                        </div>
+                                    </Space>
+                                </Popover>
 
-                                </Space>
-                            </Popover>
+                                {/* 自己头像 */}
+                                {item.sender == currentUser && (
+                                    <Avatar
+                                        src={
+                                            isGroupChat
+                                                ? groupAvatars[item.sender]
+                                                : myAvatar
+                                        }
+                                    />
+                                )}
 
-                            {/* 自己头像 */}
-                            {item.sender === 'me' && <Avatar src={avatarMap[currentUser]} />}
-
-
-                        </List.Item>
+                            </List.Item>
+                        </div>
                     )}
                 />
                 <div ref={messageEndRef} />
             </Content>
 
+            {/* 底部: 输入区域 */}
             <Footer style={{ padding: '8px 16px' }}>
+                {/* ====== 回复提示栏：显示正在回复的消息内容 ====== */}
+                {replyingMessage && (
+                    <div
+                        style={{
+                            padding: '6px 12px',
+                            background: '#f0f5ff',
+                            borderLeft: '4px solid #1890ff',
+                            marginBottom: '8px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <div>
+                            <Text type="secondary">
+                                正在回复：{replyingMessage.content.slice(0, 30)}...
+                            </Text>
+                        </div>
+                        <Button size="small" type="link" onClick={() => setReplyToId(null)}>
+                            取消
+                        </Button>
+                    </div>
+                )}
+
+                {/* ====== 输入区域 & 按钮栏 ====== */}
                 <Space.Compact style={{ width: '100%' }}>
                     {/* 输入框 */}
                     <Input.TextArea
@@ -550,8 +691,19 @@ export default function ChatPage() {
                     </Button>
                 </Space.Compact>
             </Footer>
-
-
         </Layout>
     );
+}
+
+
+// 工具函数：格式化时间为 yyyy/mm/dd hh:mm:ss
+function formatDate(dateStr: string) {
+    const date = new Date(dateStr);
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mi = String(date.getMinutes()).padStart(2, '0');
+    const ss = String(date.getSeconds()).padStart(2, '0');
+    return `${yyyy}/${mm}/${dd} ${hh}:${mi}:${ss}`;
 }

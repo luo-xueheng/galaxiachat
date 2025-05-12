@@ -252,27 +252,52 @@ export default function ChatListPage() {
         }
     };
 
+    const handleChatItemClick = async (conversationId: number) => {
+        try {
+            const response = await fetch(`api/get_conversation_detail/?conversation_id=${conversationId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token
+                },
+            });
 
-    // const handleChatItemClick = (conversationId: number) => {
-    //     router.push(`/chat/${conversationId}?${new URLSearchParams({
-    //         isGroupChat: "true",
-    //         currentChatGroupName: groupname,
-    //     }).toString()
-    //         }`);
-    // };
-    const handlePrivateChatClick = (conversationId: number, conversationname: string) => {
-        const friendUserName = getPrivateChatPartner(conversationname);
-        router.push(`/chat/${conversationId}?${new URLSearchParams({
-            currentChatFriendUserName: friendUserName,
-        }).toString()
-            }`);
-    };
-    const handleGroupChatClick = (conversationId: number, groupname: string) => {
-        router.push(`/chat/${conversationId}?${new URLSearchParams({
-            isGroupChat: "true",
-            currentChatGroupName: groupname,
-        }).toString()
-            }`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('获取会话详情成功：', data);
+            const conversationName = data.conversation_name;
+            console.log("会话名称：", conversationName);
+            const isGroupChat = data.is_group;
+            console.log("是否为群聊：", isGroupChat);
+
+            if (!isGroupChat) {
+                const friendUserName = getPrivateChatPartner(conversationName);
+                router.push(
+                    `/chat/${conversationId}?${new URLSearchParams({
+                        chatId: conversationId.toString(),
+                        isGroupChat: isGroupChat.toString(),
+                        friendUserName: friendUserName,
+                    }).toString()}`
+                ); // 将 friendUserName 作为查询参数传递
+            } else {
+                console.log("群聊名称：", conversationName);
+                router.push(
+                    `/chat/${conversationId}?${new URLSearchParams({
+                        chatId: conversationId.toString(),
+                        isGroupChat: isGroupChat.toString(),
+                        groupName: conversationName,
+                    }).toString()}`
+                ); // 将 groupName 作为查询参数传递
+            }
+
+        } catch (error) {
+            console.error('获取会话详情失败：', error);
+            return null;
+        }
+
     };
 
     const filteredChatList = chatList.filter(chat => {
@@ -338,13 +363,7 @@ export default function ChatListPage() {
                                 borderLeft: item.is_pinned ? '3px solid #1890ff' : 'none', // 置顶标识
                                 background: item.is_pinned ? '#f6f9ff' : 'inherit' // 置顶背景色
                             }}
-                            onClick={() => {
-                                if (item.is_group) {
-                                    handleGroupChatClick(item.conversation_id, item.conversation_name);
-                                } else {
-                                    handlePrivateChatClick(item.conversation_id, item.conversation_name);
-                                }
-                            }}
+                            onClick={() => handleChatItemClick(item.conversation_id)}
                             actions={[
                                 <div key="time" style={{ color: '#999', fontSize: 12 }}>
                                     {formatTime(item.updated_at)}
