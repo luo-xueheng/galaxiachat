@@ -25,8 +25,6 @@ export default function ProfilePage() {
     const [userInfo, setUserInfo] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // const userName = localStorage.getItem('userName');
-    // const token = localStorage.getItem('token');
     const [token, setToken] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
     // 读取 localStorage 中的用户信息
@@ -50,7 +48,7 @@ export default function ProfilePage() {
 
             const res = await fetch(`/api/user_profile/?userName=${userName}`, {
                 headers: {
-                    Authorization: `Bearer ${token}`,
+                    Authorization: token,
                 },
             });
 
@@ -74,7 +72,7 @@ export default function ProfilePage() {
             message.error('获取用户信息失败');
             console.error(error);
         } finally {
-            setLoading(false); // ✅ 无论成功失败，都关闭 loading 状态
+            setLoading(false); // 无论成功失败，都关闭 loading 状态
         }
     };
 
@@ -117,8 +115,8 @@ export default function ProfilePage() {
 
                 if (!res.ok) throw new Error('上传失败');
                 const data = await res.json();
-                message.success('头像上传成功');
-                fetchProfile(); // 刷新头像
+                alert('头像上传成功');
+                fetchProfile(); // 刷新用户信息
             } catch (err) {
                 alert('上传失败，请重试');
             } finally {
@@ -128,9 +126,37 @@ export default function ProfilePage() {
         input.click();
     };
 
-    const handleBasicFinish = (values: any) => {
+    const handleBasicFinish = async (values: any) => {
         console.log('提交基本信息：', values);
-        message.success('个人信息更新成功');
+
+        if (!token || !userName) {
+            message.error('未登录或 token 缺失');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('userName', userName);
+        formData.append('newNickname', values.nickName);
+
+        try {
+            const res = await fetch('/api/edit_profile/', {
+                method: 'POST',
+                headers: {
+                    Authorization: token || '',
+                },
+                body: formData,
+            });
+            console.log("请求体：", formData);
+            if (res.ok) {
+                alert('昵称更新成功');
+                fetchProfile(); // 刷新用户信息
+            } else {
+                alert('昵称更新失败');
+            }
+        } catch (error) {
+            console.error('修改昵称时出错:', error);
+            message.error('请求出错，请稍后再试');
+        }
     };
 
     const handleSensitiveFinish = (values: any) => {
@@ -203,6 +229,7 @@ export default function ProfilePage() {
                     </Card>
                 </Col>
 
+                {/* 右侧编辑信息 */}
                 <Col span={16}>
                     <Card title="基本信息设置">
                         <Descriptions column={1} bordered size="small">
