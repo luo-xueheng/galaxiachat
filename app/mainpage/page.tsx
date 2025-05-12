@@ -76,6 +76,41 @@ const Page = () => {
   const [groupError, setGroupError] = useState<string | null>(null);
   const [groupToDelete, setGroupToDelete] = useState("");
 
+  const [nickname, setNickname] = useState(null);
+  useEffect(() => {
+    const fetchNickname = async () => {
+      const userName = localStorage.getItem("userName");
+      const token = localStorage.getItem("token");
+
+      try {
+        const response = await fetch(`api/user_profile/?userName=${userName}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`, // 一定要加上 Bearer 前缀
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`请求失败，状态码：${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.code === 0) {
+          setNickname(data.nickname); // 可能为 null
+        } else {
+          console.error('后端返回错误信息：', data.info);
+        }
+
+      } catch (error) {
+        console.error('获取昵称失败：', error);
+      }
+    };
+
+    fetchNickname();
+  }, []); // 空依赖数组，组件挂载时执行一次
+  
   const fetchFriends = async () => {
     const token = localStorage.getItem("token");
     try {
@@ -677,7 +712,7 @@ const Page = () => {
 
   return (
     <Flex vertical gap="middle" style={{ padding: 24 }}>
-      <Title level={4}>欢迎，{userName} 👋</Title>
+      <Title level={4}>欢迎，{nickname !== null ? nickname : '未设置昵称'} 👋</Title>
       <Flex gap="small">
         <Button type="primary" onClick={logout}>
           logout
