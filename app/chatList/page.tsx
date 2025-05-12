@@ -406,7 +406,9 @@ export default function ChatListPage() {
                                 title={
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span style={{ fontWeight: item.is_pinned ? 500 : 'normal' }}>
-                                            {item.conversation_name}
+                                            {item.is_group
+                                                ? item.conversation_name
+                                                : getPrivateChatPartner(item.conversation_name) || item.conversation_name}
                                             {item.is_pinned && (
                                                 <span style={{ marginLeft: 8, color: '#1890ff', fontSize: 12 }}>[置顶]</span>
                                             )}
