@@ -72,6 +72,16 @@ export default function ChatListPage() {
         return names.find(name => name !== currentUser) || null;
     };
 
+    // 通用排序函数：置顶优先 + 按更新时间倒序
+    const sortConversations = (list: Conversation[]) => {
+        return list.slice().sort((a, b) => {
+            if (a.is_pinned !== b.is_pinned) {
+                return b.is_pinned ? 1 : -1;
+            }
+            return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        });
+    };
+
     // 获取并设置头像
     const fetchAndSetAvatars = async (conversations: Conversation[]) => {
         const updatedConversations = await Promise.all(
@@ -90,9 +100,10 @@ export default function ChatListPage() {
             })
         );
 
-        setChatList(updatedConversations);
+        setChatList(sortConversations(updatedConversations)); // 设置排序后的会话列表
     };
 
+    // 获取会话列表
     const fetchConversations = async () => {
         if (!token) {
             message.error('请先登录');
@@ -112,19 +123,6 @@ export default function ChatListPage() {
             } else {
                 message.error(data.info || '获取聊天列表失败');
             }
-            /*
-            if (data.code === 0) {
-                const processed = data.conversations.map((conv: Conversation) => ({
-                    ...conv,
-                    conversation_name: conv.is_group
-                        ? conv.conversation_name
-                        : conv.conversation_name.split(' ↔ ')
-                            .find(name => name.trim() !== currentUser)
-                        || conv.conversation_name
-                }));
-                setChatList(processed);
-            }
-            */
         } catch (error) {
             message.error('获取列表失败');
         } finally {
@@ -227,7 +225,7 @@ export default function ChatListPage() {
 
             if (response.ok) {
                 // 更新本地状态 + 排序
-                setChatList(prev => {
+                /*setChatList(prev => {
                     const updated = prev.map(conv =>
                         conv.conversation_id === conversationId
                             ? { ...conv, is_pinned: pinStatus }
@@ -237,6 +235,14 @@ export default function ChatListPage() {
                     return [...updated].sort((a, b) =>
                         (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0)
                     );
+                });*/
+                setChatList(prev => {
+                    const updated = prev.map(conv =>
+                        conv.conversation_id === conversationId
+                            ? { ...conv, is_pinned: pinStatus }
+                            : conv
+                    );
+                    return sortConversations(updated);
                 });
 
                 message.success(
