@@ -169,11 +169,22 @@ export default function ProfilePage() {
             return;
         }
 
+        if (!values.newEmail && !values.newPhone) {
+            alert('请至少填写一个需要修改的项（邮箱或手机号）');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('userName', userName);
-        formData.append('newEmail', values.newEmail);
-        formData.append('newPhone', values.newPhone);
         formData.append('password', values.oldPassword);
+
+        if (values.newEmail) {
+            formData.append('newEmail', values.newEmail);
+        }
+
+        if (values.newPhone) {
+            formData.append('newPhone', values.newPhone);
+        }
 
         // ✅ 输出调试
         for (const [k, v] of formData.entries()) {
@@ -191,7 +202,7 @@ export default function ProfilePage() {
 
             const data = await res.json();
             if (data.code === 0) {
-                alert('邮箱和手机号已更新');
+                alert('邮箱 / 手机号已更新');
                 setEditingSensitive(false);
                 fetchProfile(); // 刷新用户信息
             } else {
@@ -297,10 +308,10 @@ export default function ProfilePage() {
                                 <Form.Item label="旧密码" name="oldPassword" rules={[{ required: true, message: '请输入旧密码' }]}>
                                     <Input.Password />
                                 </Form.Item>
-                                <Form.Item label="新邮箱" name="newEmail" rules={[{ type: 'email', required: true }]}>
+                                <Form.Item label="新邮箱" name="newEmail" rules={[{ type: 'email', required: false }]}>
                                     <Input />
                                 </Form.Item>
-                                <Form.Item label="新手机号" name="newPhone" rules={[{ required: true }]}>
+                                <Form.Item label="新手机号" name="newPhone" rules={[{ required: false }]}>
                                     <Input />
                                 </Form.Item>
                                 <Form.Item>
