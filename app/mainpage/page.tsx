@@ -601,6 +601,7 @@ const Page = () => {
   };
 
   const handleCreateConversation = async (friendUserName: string) => {
+    console.log("创建会话", friendUserName);
     const currentUser = localStorage.getItem("userName");
     const currentUserToken = localStorage.getItem("token");
 

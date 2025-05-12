@@ -311,7 +311,7 @@ const ChatGroupManagement = () => {
         if (member.username === currentUser) return false; // 不能移除自己
         if (currentUserRole === "creator") return true;    // 群主可移除任何人（除自己）
         if (currentUserRole === "admin") {
-            return member.role === "normal";               // 管理员只能移除普通成员
+            return member.role === "normal" || member.role === "member";               // 管理员只能移除普通成员
         }
         return false; // 普通成员不能移除任何人
     });

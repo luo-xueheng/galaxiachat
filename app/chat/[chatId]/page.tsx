@@ -63,18 +63,24 @@ export default function ChatPage() {
                     if (!response.ok) throw new Error('获取头像失败');
 
                     const data = await response.json();
-                    console.log("用户头像获取成功", userName, data.avatar);
+                    //console.log("用户头像获取成功", userName, data.avatar);
+                    console.log("用户头像获取成功", data);
                     return data.avatar;
                 };
 
                 if (!isGroupChat) {
+                    console.log("私聊模式");
                     // 私聊模式
                     const [myAvatar, friendAvatar] = await Promise.all([
                         fetchUserAvatar(currentUser!),
                         fetchUserAvatar(friendUserName as string),
                     ]);
+                    
                     setMyAvatar(myAvatar);
                     setFriendAvatar(friendAvatar);
+
+                    console.log("我的头像: ", myAvatar);
+                    console.log("朋友头像: ", friendAvatar);
                 } else {
                     // 群聊模式
                     const response = await fetch(`/api/get_conversation_detail/?conversation_id=${conversationId}`, {
