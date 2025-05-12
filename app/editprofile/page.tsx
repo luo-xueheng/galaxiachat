@@ -41,7 +41,7 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
         try {
             if (!userName || !token) {
-                message.error('未登录或 token 缺失');
+                alert('未登录或 token 缺失');
                 setLoading(false);
                 return;
             }
@@ -65,11 +65,11 @@ export default function ProfilePage() {
                 setUserInfo(user);
                 form.setFieldsValue({ nickName: user.nickName });
             } else {
-                message.error('获取用户信息失败：' + data.info);
+                alert('获取用户信息失败：' + data.info);
             }
 
         } catch (error) {
-            message.error('获取用户信息失败');
+            alert('获取用户信息失败');
             console.error(error);
         } finally {
             setLoading(false); // 无论成功失败，都关闭 loading 状态
@@ -126,11 +126,12 @@ export default function ProfilePage() {
         input.click();
     };
 
+    // 🎯 修改昵称
     const handleBasicFinish = async (values: any) => {
         console.log('提交基本信息：', values);
 
         if (!token || !userName) {
-            message.error('未登录或 token 缺失');
+            alert('未登录或 token 缺失');
             return;
         }
 
@@ -155,13 +156,51 @@ export default function ProfilePage() {
             }
         } catch (error) {
             console.error('修改昵称时出错:', error);
-            message.error('请求出错，请稍后再试');
+            alert('请求出错，请稍后再试');
         }
     };
 
-    const handleSensitiveFinish = (values: any) => {
+    // 🎯 修改邮箱和手机号
+    const handleSensitiveFinish = async (values: any) => {
         console.log('验证旧密码并修改：', values);
-        message.success('邮箱和手机号已更新');
+
+        if (!token || !userName) {
+            alert('未登录或 token 缺失');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('userName', userName);
+        formData.append('newEmail', values.newEmail);
+        formData.append('newPhone', values.newPhone);
+        formData.append('password', values.oldPassword);
+
+        // ✅ 输出调试
+        for (const [k, v] of formData.entries()) {
+            console.log(`formData: ${k} = ${v}`);
+        }
+
+        try {
+            const res = await fetch('/api/edit_profile/', {
+                method: 'POST',
+                headers: {
+                    Authorization: token,
+                },
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (data.code === 0) {
+                alert('邮箱和手机号已更新');
+                setEditingSensitive(false);
+                fetchProfile(); // 刷新用户信息
+            } else {
+                alert('更新失败：' + data.info);
+            }
+        } catch (error) {
+            console.error('修改敏感信息时出错:', error);
+            alert('请求出错，请稍后再试');
+        }
     };
 
     const handlePasswordChange = (values: any) => {
@@ -233,7 +272,7 @@ export default function ProfilePage() {
                 <Col span={16}>
                     <Card title="基本信息设置">
                         <Descriptions column={1} bordered size="small">
-                            <Descriptions.Item label="用户名">{userInfo.userName}</Descriptions.Item>
+                            <Descriptions.Item label="昵称">{userInfo.userName}</Descriptions.Item>
                             <Descriptions.Item label="邮箱">{userInfo.email}</Descriptions.Item>
                             <Descriptions.Item label="手机号">{userInfo.phone}</Descriptions.Item>
                         </Descriptions>
