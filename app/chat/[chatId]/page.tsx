@@ -521,7 +521,7 @@ export default function ChatPage() {
                                     <Avatar
                                         src={
                                             isGroupChat
-                                                ? groupAvatars[item.sender]
+                                                ? "https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net" + groupAvatars[item.sender]
                                                 : friendAvatar
                                         }
                                     />
@@ -615,7 +615,7 @@ export default function ChatPage() {
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
                                                                 <ClockCircleOutlined style={{ color: '#aaa' }} />
                                                                 <span style={{ fontSize: '0.75em', color: '#888' }}>
-                                                                        已读 {item.readBy?.length ?? 0}/{totalMembers - 1}
+                                                                    已读 {item.readBy?.length ?? 0}/{totalMembers - 1}
                                                                 </span>
                                                             </div>
                                                         )}
@@ -636,12 +636,13 @@ export default function ChatPage() {
 
                                         {/* 被回复次数（仅在有回复时展示） */}
                                         {item.replyCount > 0 && (
-                                            <Text 
-                                                type="secondary" 
-                                                style={{ 
-                                                    fontSize: '0.75em', 
-                                                    marginTop: 4, 
-                                                    alignSelf: item.sender === currentUser ? 'flex-end' : 'flex-start' }}>
+                                            <Text
+                                                type="secondary"
+                                                style={{
+                                                    fontSize: '0.75em',
+                                                    marginTop: 4,
+                                                    alignSelf: item.sender === currentUser ? 'flex-end' : 'flex-start'
+                                                }}>
                                                 💬 {item.replyCount} 条回复
                                             </Text>
                                         )}
@@ -653,7 +654,7 @@ export default function ChatPage() {
                                     <Avatar
                                         src={
                                             isGroupChat
-                                                ? groupAvatars[item.sender]
+                                                ? "https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net" + groupAvatars[item.sender]
                                                 : myAvatar
                                         }
                                     />
