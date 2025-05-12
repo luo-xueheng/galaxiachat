@@ -21,7 +21,7 @@ interface ChatMessage {
     isRead?: boolean;           // 是否已读（可选）
     readBy?: string[];          // 已读成员用户名数组（可选）
     replyToId?: number;         // 回复的消息ID
-    repliedByIds?: number[];    // 被哪些消息回复
+    replyCount: number;       // 被哪些消息回复
 }
 
 export default function ChatPage() {
@@ -147,6 +147,7 @@ export default function ChatPage() {
                         replyToId: msg.reply_to?.msg_id ?? null,
                         isRead: msg.is_read,
                         readBy: msg.read_by,
+                        replyCount: msg.reply_count ?? 0,
                     };
                 });
 
@@ -195,6 +196,7 @@ export default function ChatPage() {
                         replyToId: msg.reply_to?.msg_id ?? null,
                         isRead: msg.is_read,
                         readBy: msg.read_by,
+                        replyCount: msg.reply_count ?? 0,
                     };
                     // 新消息插到前面
                     setMessages(prev => [newMessage, ...prev]);
@@ -373,10 +375,7 @@ export default function ChatPage() {
 
     // 🎯 跳转到群聊管理
     const router = useRouter();
-    //const groupIdRaw = conversationId;
-    //const groupId = Array.isArray(groupIdRaw) ? groupIdRaw[0] : groupIdRaw;
     const handleChatGroupManagement = () => {
-        //const groupIdValue = Array.isArray(groupId) ? groupId[0] : groupId;
         const query = new URLSearchParams({
             isGroupChat: "true",
             currentChatGroupName: groupName,
@@ -582,6 +581,18 @@ export default function ChatPage() {
                                                 {item.timestamp}
                                             </Text>
                                         </div>
+
+                                        {/* 被回复次数（仅在有回复时展示） */}
+                                        {item.replyCount > 0 && (
+                                            <Text 
+                                                type="secondary" 
+                                                style={{ 
+                                                    fontSize: '0.75em', 
+                                                    marginTop: 4, 
+                                                    alignSelf: item.sender === currentUser ? 'flex-end' : 'flex-start' }}>
+                                                💬 {item.replyCount} 条回复
+                                            </Text>
+                                        )}
                                     </Space>
                                 </Popover>
 
