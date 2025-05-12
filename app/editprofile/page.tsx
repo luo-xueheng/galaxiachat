@@ -319,7 +319,7 @@ export default function ProfilePage() {
                     {/* 修改昵称 */}
                     <Card title="基本信息设置">
                         <Descriptions column={1} bordered size="small">
-                            <Descriptions.Item label="昵称">{userInfo.userName}</Descriptions.Item>
+                            <Descriptions.Item label="昵称">{userInfo.nickName}</Descriptions.Item>
                             <Descriptions.Item label="邮箱">{userInfo.email}</Descriptions.Item>
                             <Descriptions.Item label="手机号">{userInfo.phone}</Descriptions.Item>
                         </Descriptions>
