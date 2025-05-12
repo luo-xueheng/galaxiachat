@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image, Modal, Dropdown, Menu } from 'antd';
+import { Input, Button, Layout, Typography, List, Avatar, Space, Popover, Image, Modal, Dropdown, Menu, Tooltip } from 'antd';
 import { SmileOutlined, PictureOutlined, EllipsisOutlined, TeamOutlined } from '@ant-design/icons';
 import { SendOutlined, CheckCircleTwoTone, ClockCircleOutlined, MessageOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 
@@ -21,7 +21,7 @@ interface ChatMessage {
     isRead?: boolean;           // 是否已读（可选）
     readBy?: string[];          // 已读成员用户名数组（可选）
     replyToId?: number;         // 回复的消息ID
-    replyCount: number;       // 被哪些消息回复
+    replyCount: number;         // 被哪些消息回复
 }
 
 export default function ChatPage() {
@@ -92,9 +92,7 @@ export default function ChatPage() {
 
                     const avatarMap: Record<string, string> = {};
                     members.forEach((member: any) => {
-                        avatarMap[member.username] = member.avatar.startsWith('/media')
-                            ? `https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${member.avatar}`
-                            : member.avatar;
+                        avatarMap[member.username] = member.avatar;
                     });
                     console.log("群聊头像获取成功", avatarMap);
                     setGroupAvatars(avatarMap);
@@ -152,6 +150,7 @@ export default function ChatPage() {
                 });
 
                 setMessages(historyMessages);
+
             } catch (error) {
                 console.error('请求历史消息时出错:', error);
             }
@@ -387,6 +386,38 @@ export default function ChatPage() {
 
     console.log("is group chat: ", isGroupChat);
 
+    // 🎯 获取群聊成员人数
+    const [totalMembers, setTotalMembers] = useState<number>(0);
+    const [groupMembers, setGroupMembers] = useState<Record<string, string>>({});
+    const fetchTotalMembers = async (conversationId: number): Promise<number> => {
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`/api/get_conversation_detail/?conversation_id=${conversationId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': currentUserToken!,
+                }
+            });
+            const data = await response.json();
+            if (data.code === 0 && Array.isArray(data.members)) {
+                console.log("获取成员成功：", data.members);
+                return data.members.length;
+            } else {
+                console.error("获取成员失败：", data.info);
+                return 0;
+            }
+        } catch (error) {
+            console.error("获取成员请求失败：", error);
+            return 0;
+        }
+    };
+    useEffect(() => {
+        if (conversationId) {
+            fetchTotalMembers(conversationId).then(setTotalMembers);
+        }
+    }, [conversationId]);
+
 
     return (
         <Layout style={{ height: '100vh' }}>
@@ -570,10 +601,31 @@ export default function ChatPage() {
                                         {/* 消息时间和已读状态 */}
                                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                             {item.sender === currentUser && (
-                                                item.isRead ? (
-                                                    <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
+                                                isGroupChat ? (
+                                                    <Tooltip
+                                                        title={
+                                                            item.readBy && item.readBy.length > 0
+                                                                ? `已读成员：${item.readBy.join(', ')}`
+                                                                : '尚未有人阅读'
+                                                        }
+                                                    >
+                                                        {item.readBy && item.readBy.length === totalMembers - 1 ? ( // 除去自己
+                                                            <CheckCircleTwoTone twoToneColor="#52c41a" title="全部已读" />
+                                                        ) : (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                                                                <ClockCircleOutlined style={{ color: '#aaa' }} />
+                                                                <span style={{ fontSize: '0.75em', color: '#888' }}>
+                                                                        已读 {item.readBy?.length ?? 0}/{totalMembers - 1}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </Tooltip>
                                                 ) : (
-                                                    <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
+                                                    item.isRead ? (
+                                                        <CheckCircleTwoTone twoToneColor="#52c41a" title="对方已读" />
+                                                    ) : (
+                                                        <ClockCircleOutlined style={{ color: '#aaa' }} title="等待对方阅读" />
+                                                    )
                                                 )
                                             )}
 
