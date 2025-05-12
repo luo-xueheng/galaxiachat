@@ -205,6 +205,12 @@ export default function ChatPage() {
                     };
                     // 新消息插到前面
                     setMessages(prev => [newMessage, ...prev]);
+                    // 立即发送“整会话标为已读”指令
+                    ws.send(JSON.stringify({
+                        action: 'mark_as_read',
+                        conversation_id: String(conversationId),
+                    }));
+                    console.log('[WebSocket] 已发送 mark_as_read');
                 }
             } catch (err) {
                 console.error('[WebSocket] 消息解析失败：', err);
