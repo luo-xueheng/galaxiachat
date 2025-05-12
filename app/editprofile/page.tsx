@@ -15,7 +15,9 @@ import {
     Typography,
     Space,
     Spin,
+    Upload,
 } from 'antd';
+import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -34,47 +36,92 @@ export default function ProfilePage() {
     const [userInfo, setUserInfo] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const userName = localStorage.getItem('userName');
-                const token = localStorage.getItem('token');
+    const userName = localStorage.getItem('userName');
+    const token = localStorage.getItem('token');
 
-                if (!userName || !token) {
-                    message.error('未登录或 token 缺失');
-                    return;
-                }
-
-                const res = await fetch(`/api/user_profile/?userName=${userName}`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                const data = await res.json();
-                if (data.code === 0) {
-                    const user: UserProfile = {
-                        userName: data.name,
-                        nickName: data.nickname,
-                        email: data.email,
-                        phone: data.phone,
-                        avatar: data.avatar,
-                    };
-                    setUserInfo(user);
-                    form.setFieldsValue({ nickName: user.nickName });
-                } else {
-                    message.error('获取用户信息失败：' + data.info);
-                }
-            } catch (err) {
-                console.error(err);
-                message.error('网络错误，无法获取用户信息');
-            } finally {
-                setLoading(false);
+    // 🎯 获取用户信息
+    const fetchProfile = async () => {
+        try {
+            if (!userName || !token) {
+                message.error('未登录或 token 缺失');
+                return;
             }
-        };
 
+            const res = await fetch(`/api/user_profile/?userName=${userName}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await res.json();
+            if (data.code === 0) {
+                const user: UserProfile = {
+                    userName: data.name,
+                    nickName: data.nickname,
+                    email: data.email,
+                    phone: data.phone,
+                    avatar: data.avatar,
+                };
+                console.log("获取用户信息成功：", user);
+                setUserInfo(user);
+                form.setFieldsValue({ nickName: user.nickName });
+            } else {
+                message.error('获取用户信息失败：' + data.info);
+            }
+        } catch (err) {
+            console.error(err);
+            message.error('网络错误，无法获取用户信息');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchProfile();
     }, []);
+
+    // 🎯 头像上传
+    const [uploading, setUploading] = useState(false);
+    const handleManualUploadClick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/png, image/jpeg';
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+
+            const isTooLarge = file.size > 10 * 1024 * 1024;
+            if (isTooLarge) {
+                alert('图片不能超过10MB');
+                return;
+            }
+
+            setUploading(true);
+            const formData = new FormData();
+            formData.append('newAvatar', file);
+            formData.append('userName', userName || '');
+
+            try {
+                const res = await fetch('/api/edit_profile/', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: token || '',
+                    },
+                    body: formData,
+                });
+
+                if (!res.ok) throw new Error('上传失败');
+                const data = await res.json();
+                message.success('头像上传成功');
+                fetchProfile(); // 刷新头像
+            } catch (err) {
+                alert('上传失败，请重试');
+            } finally {
+                setUploading(false);
+            }
+        };
+        input.click();
+    };
 
     const handleBasicFinish = (values: any) => {
         console.log('提交基本信息：', values);
@@ -116,13 +163,33 @@ export default function ProfilePage() {
                 <Col span={8}>
                     <Card>
                         <Space direction="vertical" align="center" style={{ width: '100%' }}>
-                            <Avatar src={userInfo.avatar} size={120} />
+                            <Upload
+                                showUploadList={false}
+                                customRequest={() => { }} // 禁用 Upload 默认上传
+                            >
+                                <Spin spinning={uploading}>
+                                    <div onClick={handleManualUploadClick} style={{ cursor: 'pointer' }}>
+                                        {userInfo && userInfo.avatar ? (
+                                            <Avatar
+                                                size={120}
+                                                src={`https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${userInfo.avatar}`}
+                                            />
+                                        ) : (
+                                            <div>
+                                                <PlusOutlined />
+                                                <div style={{ marginTop: 8 }}>上传新头像</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Spin>
+                            </Upload>
+
                             <Title level={4} style={{ marginTop: 16 }}>
                                 {userInfo.userName}
                             </Title>
                             
                             <Descriptions column={1} bordered size="small">
-                                <Descriptions.Item label="用户名">{userInfo.userName}</Descriptions.Item>
+                                <Descriptions.Item label="昵称">{userInfo.nickName}</Descriptions.Item>
                                 <Descriptions.Item label="邮箱">{userInfo.email}</Descriptions.Item>
                                 <Descriptions.Item label="手机号">{userInfo.phone}</Descriptions.Item>
                             </Descriptions>
