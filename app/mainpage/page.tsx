@@ -625,10 +625,13 @@ const Page = () => {
       const data = JSON.parse(event.data);
       if (data.action === "conversation_created" && data.success) {
         const conversationId = data.conversation.id;
-        router.push(`/chat/${conversationId}?${new URLSearchParams({
-          currentChatFriendUserName: friendUserName,
-        }).toString()
-          }`);
+        router.push(
+          `/chat/${conversationId}?${new URLSearchParams({
+            chatId: conversationId.toString(),
+            isGroupChat: "false",
+            friendUserName: friendUserName,
+          }).toString()}`
+        ); // 将 friendUserName 作为查询参数传递
         ws.close();
       } else {
         message.error("创建会话失败");

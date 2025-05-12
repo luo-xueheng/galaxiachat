@@ -73,11 +73,21 @@ const Page = () => {
                 // localStorage.setItem("currentChatGroupId", conversationId);
                 // localStorage.setItem("isGroupChat", "true");
                 // localStorage.setItem("currentChatGroupName", groupname);
+                /*
                 router.push(`/chat/${conversationId}?${new URLSearchParams({
                     isGroupChat: "true",
                     currentChatGroupName: groupname,
                 }).toString()
-                    }`);
+                    }`);*/
+                
+                router.push(
+                    `/chat/${conversationId}?${new URLSearchParams({
+                        chatId: conversationId.toString(),
+                        isGroupChat: "true",
+                        groupName: groupname,
+                    }).toString()}`
+                ); // 将 groupName 作为查询参数传递
+            
                 ws.close();
             } else {
                 message.error("创建会话失败");
