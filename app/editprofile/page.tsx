@@ -2,20 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-    Avatar,
-    Card,
-    Col,
-    Descriptions,
-    Form,
-    Input,
-    Row,
-    Button,
-    message,
-    Divider,
-    Typography,
-    Space,
-    Spin,
-    Upload,
+    Avatar, Card, Col, Descriptions, Form,
+    Input, Row, Button, message, Divider,
+    Typography, Space, Spin, Upload,
 } from 'antd';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 
@@ -36,14 +25,26 @@ export default function ProfilePage() {
     const [userInfo, setUserInfo] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const userName = localStorage.getItem('userName');
-    const token = localStorage.getItem('token');
-
+    // const userName = localStorage.getItem('userName');
+    // const token = localStorage.getItem('token');
+    const [token, setToken] = useState<string | null>(null);
+    const [userName, setUserName] = useState<string | null>(null);
+    // 读取 localStorage 中的用户信息
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const storedToken = localStorage.getItem("token");
+            const storedUserName = localStorage.getItem("userName");
+            setToken(storedToken);
+            setUserName(storedUserName);
+        }
+    }, []);
+    
     // 🎯 获取用户信息
     const fetchProfile = async () => {
         try {
             if (!userName || !token) {
                 message.error('未登录或 token 缺失');
+                setLoading(false);
                 return;
             }
 
@@ -54,6 +55,7 @@ export default function ProfilePage() {
             });
 
             const data = await res.json();
+            console.log('用户信息:', data);
             if (data.code === 0) {
                 const user: UserProfile = {
                     userName: data.name,
@@ -62,23 +64,26 @@ export default function ProfilePage() {
                     phone: data.phone,
                     avatar: data.avatar,
                 };
-                console.log("获取用户信息成功：", user);
                 setUserInfo(user);
                 form.setFieldsValue({ nickName: user.nickName });
             } else {
                 message.error('获取用户信息失败：' + data.info);
             }
-        } catch (err) {
-            console.error(err);
-            message.error('网络错误，无法获取用户信息');
+
+        } catch (error) {
+            message.error('获取用户信息失败');
+            console.error(error);
         } finally {
-            setLoading(false);
+            setLoading(false); // ✅ 无论成功失败，都关闭 loading 状态
         }
     };
 
+    // 用户信息准备好后调用
     useEffect(() => {
-        fetchProfile();
-    }, []);
+        if (token && userName) {
+            fetchProfile();
+        }
+    }, [token, userName]);
 
     // 🎯 头像上传
     const [uploading, setUploading] = useState(false);
@@ -140,6 +145,7 @@ export default function ProfilePage() {
     };
 
     if (loading) {
+        console.log('Loading user info...');
         return (
             <div style={{ textAlign: 'center', paddingTop: 100 }}>
                 <Spin size="large" tip="加载用户信息中..." />
