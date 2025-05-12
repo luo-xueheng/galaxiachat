@@ -280,12 +280,16 @@ export default function ProfilePage() {
                                 customRequest={() => { }} // 禁用 Upload 默认上传
                             >
                                 <Spin spinning={uploading}>
-                                    <div onClick={handleManualUploadClick} style={{ cursor: 'pointer' }}>
+                                    <div className="avatar-wrapper" onClick={handleManualUploadClick} style={{ cursor: 'pointer', position: 'relative' }}>
                                         {userInfo && userInfo.avatar ? (
-                                            <Avatar
-                                                size={120}
-                                                src={`https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${userInfo.avatar}`}
-                                            />
+                                            <>
+                                                <Avatar
+                                                    size={120}
+                                                    src={`https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${userInfo.avatar}`}
+                                                    style={{ transition: '0.3s' }}
+                                                />
+                                                <div className="avatar-overlay">点击更换头像</div>
+                                            </>
                                         ) : (
                                             <div>
                                                 <PlusOutlined />
@@ -295,6 +299,7 @@ export default function ProfilePage() {
                                     </div>
                                 </Spin>
                             </Upload>
+                            <Typography.Text type="secondary">点击上传新头像</Typography.Text>
 
                             <Title level={4} style={{ marginTop: 16 }}>
                                 {userInfo.userName}
