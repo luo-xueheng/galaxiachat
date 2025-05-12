@@ -186,7 +186,7 @@ export default function ProfilePage() {
             formData.append('newPhone', values.newPhone);
         }
 
-        // ✅ 输出调试
+        // 输出调试
         for (const [k, v] of formData.entries()) {
             console.log(`formData: ${k} = ${v}`);
         }
@@ -214,10 +214,40 @@ export default function ProfilePage() {
         }
     };
 
-    const handlePasswordChange = (values: any) => {
+    // 🎯 修改密码
+    const handlePasswordChange = async (values: any) => {
         console.log('修改密码：', values);
-        message.success('密码修改成功');
-        passwordForm.resetFields();
+
+        if (!token || !userName) {
+            alert('未登录或 token 缺失');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('userName', userName);
+        formData.append('password', values.oldPassword);
+        formData.append('newPassword', values.newPassword);
+
+        try {
+            const res = await fetch('/api/edit_profile/', {
+                method: 'POST',
+                headers: {
+                    Authorization: token,
+                },
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (data.code === 0) {
+                alert('密码修改成功');
+                passwordForm.resetFields();
+            } else {
+                alert('修改失败：' + data.info);
+            }
+        } catch (error) {
+            console.error('修改密码时出错:', error);
+            alert('请求出错，请稍后再试');
+        }
     };
 
     if (loading) {
@@ -281,6 +311,7 @@ export default function ProfilePage() {
 
                 {/* 右侧编辑信息 */}
                 <Col span={16}>
+                    {/* 修改昵称 */}
                     <Card title="基本信息设置">
                         <Descriptions column={1} bordered size="small">
                             <Descriptions.Item label="昵称">{userInfo.userName}</Descriptions.Item>
@@ -302,6 +333,7 @@ export default function ProfilePage() {
 
                     <Divider />
 
+                    {/* 修改邮箱及电话 */}
                     <Card title="敏感信息修改">
                         {editingSensitive ? (
                             <Form layout="vertical" onFinish={handleSensitiveFinish}>
@@ -328,6 +360,7 @@ export default function ProfilePage() {
 
                     <Divider />
 
+                    {/* 修改密码 */}
                     <Card title="修改密码">
                         <Form layout="vertical" form={passwordForm} onFinish={handlePasswordChange}>
                             <Form.Item label="旧密码" name="oldPassword" rules={[{ required: true, message: '请输入旧密码' }]}>
