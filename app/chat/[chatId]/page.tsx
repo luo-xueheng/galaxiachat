@@ -217,8 +217,12 @@ export default function ChatPage() {
             }
         };
 
-        ws.onclose = () => {
-            console.warn('[WebSocket] 连接已关闭');
+        ws.onclose = (event) => {
+            console.warn('[WebSocket] 连接已关闭', {
+                code: event.code,
+                reason: event.reason,
+                wasClean: event.wasClean,
+            });
         };
 
         ws.onerror = (err) => {
