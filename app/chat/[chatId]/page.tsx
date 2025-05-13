@@ -167,6 +167,7 @@ export default function ChatPage() {
 
     // 🎯 建立 WebSocket 连接，监听新消息
     const [socket, setSocket] = useState<WebSocket | null>(null);
+    console.log('WebSocket effect deps:', { conversationId, currentUserToken, currentUser });
     useEffect(() => {
         if (!conversationId || !currentUserToken) {
             console.warn('[WebSocket] 缺少必要参数，终止连接');
@@ -205,6 +206,16 @@ export default function ChatPage() {
                     };
                     // 新消息插到前面
                     setMessages(prev => [newMessage, ...prev]);
+
+                    // 发送 acknowledge 确认消息
+                    const acknowledgePayload = {
+                        action: 'acknowledge',
+                        msg_id: msg.msg_id,
+                        sender: msg.sender_name,
+                    };
+                    ws.send(JSON.stringify(acknowledgePayload));
+                    console.log('[WebSocket] 已发送 acknowledge:', acknowledgePayload);
+
                     // 立即发送“整会话标为已读”指令
                     ws.send(JSON.stringify({
                         action: 'mark_as_read',
@@ -218,11 +229,10 @@ export default function ChatPage() {
         };
 
         ws.onclose = (event) => {
-            console.warn('[WebSocket] 连接已关闭', {
-                code: event.code,
-                reason: event.reason,
-                wasClean: event.wasClean,
-            });
+            console.warn('[WebSocket] 连接已关闭', event);
+            if (event.code || event.reason) {
+                console.log(`[WebSocket] Close code: ${event.code}, reason: ${event.reason}`);
+            }
         };
 
         ws.onerror = (err) => {
