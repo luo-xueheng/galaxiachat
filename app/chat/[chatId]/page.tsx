@@ -167,85 +167,105 @@ export default function ChatPage() {
 
     // 🎯 建立 WebSocket 连接，监听新消息
     const [socket, setSocket] = useState<WebSocket | null>(null);
-    console.log('WebSocket effect deps:', { conversationId, currentUserToken, currentUser });
+    const reconnectDelay = 1000; // 1秒后尝试重连
+    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     useEffect(() => {
-        if (!conversationId || !currentUserToken) {
-            console.warn('[WebSocket] 缺少必要参数，终止连接');
-            return;
-        }
+        let ws: WebSocket;
 
-        const ws = new WebSocket(
-            `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/chat/${conversationId}/?token=${currentUserToken}`
-        );
+        const connectWebSocket = () => {
+            if (!conversationId || !currentUserToken) {
+                console.warn('[WebSocket] 缺少必要参数，终止连接');
+                return;
+            }
 
-        ws.onopen = () => {
-            console.log('[WebSocket] 连接已建立');
-        };
+            console.log('[WebSocket] 正在尝试连接...');
+            ws = new WebSocket(
+                `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/chat/${conversationId}/?token=${currentUserToken}`
+            );
 
-        ws.onmessage = (event) => {
-            console.log('[WebSocket] 收到消息：', event.data);
+            ws.onopen = () => {
+                console.log('[WebSocket] 连接已建立');
+            };
 
-            try {
-                const data = JSON.parse(event.data);
+            ws.onmessage = (event) => {
+                console.log('[WebSocket] 收到消息：', event.data);
 
-                if (data.action === 'new_message') {
-                    const msg = data.message;
-                    const newMessage: ChatMessage = {
-                        id: msg.msg_id,
-                        sender: msg.sender_name,
-                        msgType: msg.msg_type as MsgType,
-                        content:
-                            msg.msg_type === 'image'
-                                ? `https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${msg.content}`
-                                : msg.content,
-                        timestamp: new Date(msg.created_at * 1000).toLocaleString(),
-                        replyToId: msg.reply_to?.msg_id ?? null,
-                        isRead: msg.is_read,
-                        readBy: msg.read_by,
-                        replyCount: msg.reply_count ?? 0,
-                    };
-                    // 新消息插到前面
-                    setMessages(prev => [newMessage, ...prev]);
+                try {
+                    const data = JSON.parse(event.data);
 
-                    // 发送 acknowledge 确认消息
-                    const acknowledgePayload = {
-                        action: 'acknowledge',
-                        msg_id: msg.msg_id,
-                        sender: msg.sender_name,
-                    };
-                    ws.send(JSON.stringify(acknowledgePayload));
-                    console.log('[WebSocket] 已发送 acknowledge:', acknowledgePayload);
+                    if (data.action === 'new_message') {
+                        const msg = data.message;
+                        const newMessage: ChatMessage = {
+                            id: msg.msg_id,
+                            sender: msg.sender_name,
+                            msgType: msg.msg_type as MsgType,
+                            content:
+                                msg.msg_type === 'image'
+                                    ? `https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net${msg.content}`
+                                    : msg.content,
+                            timestamp: new Date(msg.created_at * 1000).toLocaleString(),
+                            replyToId: msg.reply_to?.msg_id ?? null,
+                            isRead: msg.is_read,
+                            readBy: msg.read_by,
+                            replyCount: msg.reply_count ?? 0,
+                        };
 
-                    // 立即发送“整会话标为已读”指令
-                    ws.send(JSON.stringify({
-                        action: 'mark_as_read',
-                        conversation_id: String(conversationId),
-                    }));
-                    console.log('[WebSocket] 已发送 mark_as_read');
+                        // 新消息插到前面
+                        setMessages(prev => [newMessage, ...prev]);
+
+                        // 立即发送“整会话标为已读”指令
+                        ws.send(JSON.stringify({
+                            action: 'mark_as_read',
+                            conversation_id: String(conversationId),
+                        }));
+                        console.log('[WebSocket] 已发送 mark_as_read');
+
+                        // 发送 acknowledge 确认消息
+                        if (msg.msg_id && msg.sender_name) {
+                            ws.send(JSON.stringify({
+                                action: 'acknowledge',
+                                msg_id: msg.msg_id,
+                                sender: msg.sender_name,
+                            }));
+                            console.log('[WebSocket] 已发送 acknowledge');
+                        } else {
+                            console.warn('[WebSocket] acknowledge 缺少字段，不发送：', msg);
+                        }
+                    }
+                } catch (err) {
+                    console.error('[WebSocket] 消息解析失败：', err);
                 }
-            } catch (err) {
-                console.error('[WebSocket] 消息解析失败：', err);
-            }
+            };
+
+            ws.onclose = (event) => {
+                console.warn('[WebSocket] 连接已关闭', event);
+                if (event.code !== 1000) {
+                    console.log(`[WebSocket] 非正常关闭（code=${event.code}），${reconnectDelay / 1000}秒后尝试重连...`);
+                    reconnectTimeoutRef.current = setTimeout(() => {
+                        connectWebSocket();
+                    }, reconnectDelay);
+                }
+            };
+
+            ws.onerror = (err) => {
+                console.error('[WebSocket] 错误发生：', err);
+            };
+
+            setSocket(ws);
         };
 
-        ws.onclose = (event) => {
-            console.warn('[WebSocket] 连接已关闭', event);
-            if (event.code || event.reason) {
-                console.log(`[WebSocket] Close code: ${event.code}, reason: ${event.reason}`);
-            }
-        };
-
-        ws.onerror = (err) => {
-            console.error('[WebSocket] 错误发生：', err);
-        };
-
-        setSocket(ws);
+        connectWebSocket();
 
         return () => {
-            console.log('[WebSocket] 正在关闭连接...');
-            ws.close();
+            console.log('[WebSocket] 正在清理连接...');
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+            ws && ws.close();
         };
     }, [conversationId, currentUserToken, currentUser]);
+
 
     // ✅ 滚动到底部
     const messageEndRef = useRef<HTMLDivElement>(null);
