@@ -155,7 +155,18 @@ export default function ChatPage() {
                     };
                 });
 
-                setMessages(historyMessages);
+                // setMessages(historyMessages);
+                // 去重逻辑：合并已有消息和新拉取的消息，然后按 msg_id 去重
+                setMessages(prevMessages => {
+                    const allMessages = [...prevMessages, ...historyMessages];
+                    const uniqueMap = new Map<string, ChatMessage>();
+                    for (const msg of allMessages) {
+                        uniqueMap.set(msg.id.toString(), msg); // 后来的会覆盖重复的
+                    }
+                    return Array.from(uniqueMap.values()).sort((a, b) =>
+                        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                    );
+                });
 
             } catch (error) {
                 console.error('请求历史消息时出错:', error);
@@ -212,7 +223,17 @@ export default function ChatPage() {
                         };
 
                         // 新消息插到前面
-                        setMessages(prev => [newMessage, ...prev]);
+                        // setMessages(prev => [newMessage, ...prev]);
+                        // 去重并添加新消息
+                        setMessages(prev => {
+                            const exists = prev.some(m => m.id === newMessage.id);
+                            if (exists) {
+                                console.log('[WebSocket] 收到重复消息，忽略：', newMessage.id);
+                                return prev; // 已存在，跳过添加
+                            }
+                            return [newMessage, ...prev];
+                        });
+
 
                         // 立即发送“整会话标为已读”指令
                         ws.send(JSON.stringify({
