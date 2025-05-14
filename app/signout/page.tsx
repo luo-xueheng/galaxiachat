@@ -101,7 +101,7 @@ const SignoutPage = () => {
             marginBottom: '40px',
           }}
         >
-          <img src="/images/logo_tmp.png" alt="Logo" style={{ width: 150, height: 150, marginBottom: 10 }} />
+          <img src="/_next/static/images/logo_tmp.png" alt="Logo" style={{ width: 150, height: 150, marginBottom: 10 }} />
           <div style={{ fontSize: '36px', fontWeight: 'bold' }}>Goodbye from Galaxia Chat!</div>
           <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'gray' }}>
             We're sad to see you go.
