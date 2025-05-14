@@ -650,7 +650,7 @@ export default function ChatPage() {
                                         align="end"
                                         style={{
                                             maxWidth: '70%',
-                                            background: item.sender === currentUser ? '#cfe9ff' : '#ffffff',
+                                            background: item.sender === currentUser ? '#e6e0ff' : '#ffffff',
                                             padding: '8px 12px',
                                             borderRadius: '16px',
                                             flexDirection: 'column',

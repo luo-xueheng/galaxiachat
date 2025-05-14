@@ -296,7 +296,7 @@ const SearchUserPage: React.FC = () => {
       <div style={{ fontWeight: 'bold', fontSize: '16px' }}>
         👤 当前用户：{userName}
       </div>
-      <Button type="link" onClick={() => router.push('/mainpage')}>
+      <Button type="link" onClick={() => router.push('/mainpage/friends')}>
         ← 返回主页
       </Button>
       <Search

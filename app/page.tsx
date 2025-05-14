@@ -26,9 +26,9 @@ const Home = () => (
       flexDirection: 'column', // 垂直排列
       textAlign: 'center',    // 使文本居中
       height: '50vh', width: '100%',
-      marginTop: 150,
+      marginTop: 100,
     }}>
-      <img src="/_next/static/images/logo_tmp.png" alt="Logo" style={{ width: 150, height: 150, marginBottom: 10 }} /> {/* 图标 */}
+      <img src="/images/logo_tmp.png" alt="Logo" style={{ width: 250, height: 250, marginBottom: 10 }} /> {/* 图标 */}
       <div style={{ fontSize: '48px', fontWeight: 'bold' }}>
         Welcome to Galaxia Chat!
       </div>
@@ -39,16 +39,20 @@ const Home = () => (
 
     {/* 下面部分：按钮 */}
     <div style={{ marginTop: 20 }}>
-      {/* 导航到log in */}
+      {/* 导航到登录/注册 */}
       <Link href="/login">
-        <Button color="purple" variant="solid" style={{ marginRight: '10px' }}>
-          Log in
-        </Button>
-      </Link>
-      {/* 导航到sign up */}
-      <Link href="/register">
-        <Button color="purple" variant="outlined">
-          Sign up
+        <Button
+          type="primary"
+          size="large"
+          style={{
+            backgroundColor: '#722ed1', // 按钮背景色为紫色
+            borderColor: '#722ed1',    // 按钮边框色为紫色
+            color: '#fff',             // 按钮文字颜色为白色
+            fontSize: '20px',          // 增大按钮文字大小
+            padding: '25px 40px',      // 增大按钮的内边距
+          }}
+        >
+          Get Started Now!
         </Button>
       </Link>
     </div>

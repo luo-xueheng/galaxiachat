@@ -1,192 +1,69 @@
 "use client";
-import {
-  AlipayOutlined,
-  LockOutlined,
-  MobileOutlined,
-  TaobaoOutlined,
-  UserOutlined,
-  WeiboOutlined,
-} from '@ant-design/icons';
-import {
-  LoginFormPage,
-  ProConfigProvider,
-  ProFormCaptcha,
-  ProFormCheckbox,
-  ProFormText,
-} from '@ant-design/pro-components';
-import { Button, Divider, Space, Tabs, message, theme } from 'antd';
-import type { CSSProperties } from 'react';
-import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
-import { useState } from 'react';
-import{ useRouter } from 'next/navigation'; // 使用新的 useRouter
-import { useEffect } from 'react';
-import { setName, setToken } from "../redux/auth";
-import { useDispatch } from "react-redux";
-type LoginType = 'account';
 
-const iconStyles: CSSProperties = {
-  color: 'rgba(0, 0, 0, 0.2)',
-  fontSize: '18px',
-  verticalAlign: 'middle',
-  cursor: 'pointer',
-};
+import { Tabs, ConfigProvider } from 'antd';
+import LoginForm from './components/LoginForm';
+import RegisterForm from './components/RegisterForm';
 
-const Page = () => {
-  const [loginType, setLoginType] = useState<LoginType>('account');
-  const [userName, setUserName] = useState("");
-  const [password, setPassword] = useState("");
-  const { token } = theme.useToken();
-  const router = useRouter();
-  const dispatch = useDispatch();
-  const login = async () => {
-    fetch(`${BACKEND_URL}/api/login`, {
-      method: "POST",
-      body: JSON.stringify({
-          userName,
-          password,
-      }),
-  })
-      .then((res) => res.json())
-      .then((res) => {
-          if (Number(res.code) === 0) {
-              // Step 4 BEGIN
-              dispatch(setToken(res.token));
-              // Step 4 END
-              dispatch(setName(userName));
-                // 存储 token
-              localStorage.setItem("token", res.token);
-              localStorage.setItem("userName", userName);
-              alert(LOGIN_SUCCESS_PREFIX + userName);
-              /**
-               * @note 这里假定 login 页面不是首页面，大作业中这样写的话需要作分支判断
-               */
-              router.push("/mainpage");
-          }
-          else {
-              alert(LOGIN_FAILED);
-          }
-      })
-      .catch((err) => alert(FAILURE_PREFIX + err));
-  };
-
+const LoginRegisterPage = () => {
   return (
-    <div
-      style={{
-        backgroundColor: 'white',
-        height: '100vh',
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#722ed1', // 设置全局主题色为紫色
+        },
       }}
     >
-      <LoginFormPage
-        backgroundImageUrl="https://mdn.alipayobjects.com/huamei_gcee1x/afts/img/A*y0ZTS6WLwvgAAAAAAAAAAAAADml6AQ/fmt.webp"
-        logo="https://github.githubassets.com/favicons/favicon.png"
-        //backgroundVideoUrl="https://gw.alipayobjects.com/v/huamei_gcee1x/afts/video/jXRBRK_VAwoAAAAAAAAAAAAAK4eUAQBr"
-        title="Instant Message"
-        containerStyle={{
-          backgroundColor: 'rgba(0, 0, 0,0.65)',
-          backdropFilter: 'blur(4px)',
-        }}
-        subTitle="好用的即时通讯系统"
-        onFinish={async () => {
-          await login(); // 表单提交时触发登录请求
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        padding: '0 20px',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '10px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #ddd',
+        width: '80%',
+        margin: '0 auto',
+      }}
+    >
+      {/* 上方图标和宣传语 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexDirection: 'column',
+          textAlign: 'center',
+          marginBottom: '80px',
         }}
       >
-        <Tabs
-          centered
-          activeKey={loginType}
-          onChange={(activeKey) => setLoginType(activeKey as LoginType)}
-        >
-          <Tabs.TabPane key={'account'} tab={'账号密码登录'} />
-        </Tabs>
-        {loginType === 'account' && (
-          <>
-            <ProFormText
-              name="username"
-              fieldProps={{
-                size: 'large',
-                prefix: (
-                  <UserOutlined
-                    style={{
-                      color: token.colorText,
-                    }}
-                    className={'prefixIcon'}
-                  />
-                ),
-                value: userName,
-                onChange: (e) => setUserName(e.target.value),
-              }}
-              placeholder={'用户名: '}
-              rules={[
-                {
-                  required: true,
-                  message: '请输入用户名!',
-                },
-              ]}
-            />
-            <ProFormText.Password
-              name="password"
-              fieldProps={{
-                size: 'large',
-                prefix: (
-                  <LockOutlined
-                    style={{
-                      color: token.colorText,
-                    }}
-                    className={'prefixIcon'}
-                  />
-                ),
-                value: password,
-                onChange: (e) => setPassword(e.target.value),
-              }}
-              placeholder={'密码: '}
-              rules={[
-                {
-                  required: true,
-                  message: '请输入密码！',
-                },
-              ]}
-            />
-          </>
-        )}
-        <div
-          style={{
-            marginBlockEnd: 24,
-          }}
-        >
-          <ProFormCheckbox noStyle name="autoLogin">
-            自动登录
-          </ProFormCheckbox>
-          <a
-            style={{
-              float: 'right',
-            }}
-          >
-            忘记密码
-          </a>
-        </div>
-        {/* 添加跳转到注册页面的按钮 */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginTop: 24,
-          }}
-        >
-          <Button
-            type="link"
-            onClick={() => router.push('/register')} // 跳转到注册页面
-          >
-            没有账号？立即注册
-          </Button>
-        </div>
-      </LoginFormPage>
+        <img src="/images/logo_tmp.png" alt="Logo" style={{ width: 150, height: 150, marginBottom: 10 }} />
+        <div style={{ fontSize: '36px', fontWeight: 'bold' }}>Welcome to Galaxia Chat!</div>
+        <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'gray' }}>Your Universe of Infinite Conversations.</div>
+      </div>
+
+      {/* 登录和注册切换 Tabs */}
+      <Tabs
+        defaultActiveKey="login"
+        centered
+        items={[
+          {
+            key: 'login',
+            label: '登录',
+            children: <LoginForm />,
+          },
+          {
+            key: 'register',
+            label: '注册',
+            children: <RegisterForm />,
+          },
+        ]}
+      />
     </div>
+    </ConfigProvider>
   );
 };
 
-export default () => {
-  return (
-    <ProConfigProvider dark>
-      <Page />
-    </ProConfigProvider>
-  );
-};
+export default LoginRegisterPage;

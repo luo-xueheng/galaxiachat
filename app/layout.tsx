@@ -1,6 +1,7 @@
-//"use client"; // 必须添加，因为使用了客户端钩子
+"use client"; // 必须添加，因为使用了客户端钩子
 
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from 'next/link';
 import "./globals.css";
 
 import { useRouter, usePathname } from "next/navigation";

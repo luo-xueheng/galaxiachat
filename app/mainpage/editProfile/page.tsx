@@ -4,9 +4,18 @@ import React, { useEffect, useState } from 'react';
 import {
     Avatar, Card, Col, Descriptions, Form,
     Input, Row, Button, message, Divider,
-    Typography, Space, Spin, Upload,
+    Typography, Space, Spin, Upload, Popconfirm
 } from 'antd';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
+import { useRouter } from "next/navigation";
+import { useSelector, useDispatch } from "react-redux";
+import { setName, setToken } from "../../redux/auth";
+import {
+    BACKEND_URL,
+    FAILURE_PREFIX,
+    LOGOUT_SUCCESS,
+    LOGOUT_FAILED,
+} from "../../constants/string";
 
 const { Title, Text } = Typography;
 
@@ -25,14 +34,14 @@ export default function ProfilePage() {
     const [userInfo, setUserInfo] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const [token, setToken] = useState<string | null>(null);
+    const [token, setLocalToken] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
     // 读取 localStorage 中的用户信息
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const storedToken = localStorage.getItem("token");
             const storedUserName = localStorage.getItem("userName");
-            setToken(storedToken);
+            setLocalToken(storedToken);
             setUserName(storedUserName);
         }
     }, []);
@@ -267,6 +276,41 @@ export default function ProfilePage() {
         );
     }
 
+    // 🎯 登出
+    const router = useRouter();
+    const dispatch = useDispatch();
+    const logout = async () => {
+        const token = localStorage.getItem("token");
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/logout`, {
+                method: "POST",
+                headers: {
+                    Authorization: `${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ userName }),
+            });
+
+            const data = await response.json();
+            if (data.code === 0) {
+                alert(LOGOUT_SUCCESS);
+                dispatch(setToken(null)); // Redux action remains unchanged
+                localStorage.removeItem("token");
+                localStorage.removeItem("userName");
+                router.push("/");
+            } else {
+                alert(FAILURE_PREFIX + (data.message || LOGOUT_FAILED));
+            }
+        } catch (error) {
+            alert(FAILURE_PREFIX + error);
+        }
+    };
+
+    // 🎯 注销账号
+    const handleSignout = () => {
+        router.push('/signout');
+    };
+
     return (
         <div style={{ padding: '24px' }}>
             <Title level={2}>个人信息</Title>
@@ -311,6 +355,24 @@ export default function ProfilePage() {
                                 <Descriptions.Item label="手机号">{userInfo.phone}</Descriptions.Item>
                             </Descriptions>
                         </Space>
+                        <div style={{ textAlign: 'center', marginTop: 24 }}>
+                            <Space>
+                                <Button type="primary" danger onClick={logout}>
+                                    退出登录
+                                </Button>
+                                {/* 注销确认弹窗 */}
+                                <Popconfirm
+                                    title="确定要注销账号吗？"
+                                    onConfirm={handleSignout}
+                                    okText="是"
+                                    cancelText="否"
+                                >
+                                    <Button danger>
+                                        注销账号
+                                    </Button>
+                                </Popconfirm>
+                            </Space>
+                        </div>
                     </Card>
                 </Col>
 

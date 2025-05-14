@@ -5,20 +5,16 @@
 
 export const BACKEND_URL = "";
 
-export const CREATE_SUCCESS = "成功创建一个游戏记录";
-export const UPDATE_SUCCESS = "成功更新该游戏记录";
-export const DELETE_SUCCESS = "成功删除该游戏记录";
-
 export const FAILURE_PREFIX = "网络请求失败：";
 
 export const LOGIN_REQUIRED = "你需要登陆才能完成这一操作";
-export const LOGIN_SUCCESS_PREFIX = "登陆成功，用户名：";
+export const LOGIN_SUCCESS_PREFIX = "登陆成功，欢迎回来，";
 export const LOGIN_FAILED = "登陆失败";
 export const REGISTER_REQUIRED = "你需要注册才能完成这一操作";
-export const REGISTER_SUCCESS_PREFIX = "注册成功，用户名：";
+export const REGISTER_SUCCESS_PREFIX = "注册成功，欢迎来到Galaxia Chat，";
 export const REGISTER_FAILED = "注册失败";
 export const LOGOUT_SUCCESS = "成功退出登录";
 export const LOGOUT_FAILED = "退出登录失败";
 export const USERNAME_REQUIRED = "用户名不能为空";
-export const SIGNOUT_SUCCESS = "成功注销该用户";
+export const SIGNOUT_SUCCESS = "成功注销，再见👋🏻！";
 export const SIGNOUT_FAILED = "注销用户失败";
