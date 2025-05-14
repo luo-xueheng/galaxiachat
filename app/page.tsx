@@ -28,7 +28,7 @@ const Home = () => (
       height: '50vh', width: '100%',
       marginTop: 100,
     }}>
-      <img src="/images/logo_tmp.png" alt="Logo" style={{ width: 250, height: 250, marginBottom: 10 }} /> {/* 图标 */}
+      <img src="/_next/static/images/logo_tmp.png" alt="Logo" style={{ width: 250, height: 250, marginBottom: 10 }} /> {/* 图标 */}
       <div style={{ fontSize: '48px', fontWeight: 'bold' }}>
         Welcome to Galaxia Chat!
       </div>
