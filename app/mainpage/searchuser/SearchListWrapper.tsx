@@ -1,13 +1,17 @@
 'use client';
 
+import {
+  InfoCircleOutlined
+} from '@ant-design/icons';
+
 import React, { useState, useEffect } from 'react';
 import { Input, List, Avatar, Button, Space, message, Empty, Popover, Spin } from 'antd';
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
-import { setName, setToken } from "../redux/auth";
+import { setName, setToken } from "../../redux/auth";
 import type { GetProps } from 'antd';
-import { RootState } from "../redux/store";
-import { BACKEND_URL } from "../constants/string";
+import { RootState } from "../../redux/store";
+import { BACKEND_URL } from "../../constants/string";
 
 type SearchProps = GetProps<typeof Input.Search>;
 
@@ -24,45 +28,19 @@ type UserInfo = {
   email?: string;
   phone?: string;
   createdAt?: string;
-  is_friend?: boolean;  // 👈 新增这个字段
+  is_friend?: boolean;
 };
+
 type PendingRequest = {
   userName: string;
   request_id: string;
 };
 
 let ws: WebSocket | null = null;
-const connectWebSocket = async (): Promise<WebSocket> => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    throw new Error("❌ Token 不存在，无法建立 WebSocket 连接");
-  }
 
-  return new Promise((resolve, reject) => {
-    ws = new WebSocket(
-      `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token)}`
-    );
-
-    ws.onopen = () => {
-      console.log('✅ WebSocket 连接已建立');
-      resolve(ws);
-    };
-
-    ws.onerror = (error) => {
-      console.error('❌ WebSocket 连接错误:', error);
-      reject(error);
-    };
-
-    ws.onclose = () => {
-      console.warn('⚠️ WebSocket 连接已关闭');
-      ws = null;
-    };
-  });
-};
 
 const { Search } = Input;
-
-const SearchUserPage: React.FC = () => {
+export default function SearchListPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Friend[]>([]);
   const [selectedUserInfo, setSelectedUserInfo] = useState<UserInfo | null>(null);
@@ -73,6 +51,35 @@ const SearchUserPage: React.FC = () => {
   const token = useSelector((state: RootState) => state.auth.token);
   const authReady = useSelector((state: RootState) => !!(state.auth.token && state.auth.name));
   const dispatch = useDispatch();
+
+  //监听好友请求的结果，用于更新“添加好友”/“已添加“/“已申请”按钮的状态
+  const connectWebSocket = async (): Promise<WebSocket> => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("❌ Token 不存在，无法建立 WebSocket 连接");
+    }
+
+    return new Promise((resolve, reject) => {
+      ws = new WebSocket(
+        `wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/friend-request/?token=${encodeURIComponent(token)}`
+      );
+
+      ws.onopen = () => {
+        console.log('✅ WebSocket 连接已建立');
+        resolve(ws);
+      };
+
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket 连接错误:', error);
+        reject(error);
+      };
+
+      ws.onclose = () => {
+        console.warn('⚠️ WebSocket 连接已关闭');
+        ws = null;
+      };
+    });
+  };
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -138,6 +145,7 @@ const SearchUserPage: React.FC = () => {
     };
   }, [dispatch, router]);
 
+  //搜索用户
   const onSearch: SearchProps['onSearch'] = async (value) => {
     if (!value) return;
     setLoading(true);
@@ -172,34 +180,33 @@ const SearchUserPage: React.FC = () => {
     }
   };
 
-  const fetchUserInfo = async (username: string) => {
-    setInfoLoading(true);
-    setSelectedUserInfo(null);
-    setOpenPopoverUser(username);
-
+  //点击搜索结果，跳转用户信息界面
+  const handleSearchItemClick = async (username: string) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/user/${username}`, {
+      const response = await fetch(`${BACKEND_URL}/api/user/${username}`, {
+        method: 'GET',
         headers: {
-          'Authorization': token,
+          'Content-Type': 'application/json',
+          'Authorization': token
         },
       });
 
-      if (!res.ok) throw new Error('请求失败');
-      const data = await res.json();
+      const data = await response.json();
+      console.log('获取用户信息成功：', data);
+      const conversationName = data.conversation_name;
+      console.log("会话名称：", conversationName);
+      const isGroupChat = data.is_group;
+      console.log("是否为群聊：", isGroupChat);
+      router.push(`/mainpage/searchuser/friendinfo?infoUserName=${username}`);
 
-      // 获取当前列表中的 is_friend 状态
-      const userInResults = results.find(user => user.userName === username);
-      const is_friend = userInResults?.is_friend ?? false;
-
-      setSelectedUserInfo({ ...data, is_friend });
-    } catch (err) {
-      console.error("获取用户信息失败：", err);
-      message.error("获取用户信息失败");
-      setSelectedUserInfo(null);
-    } finally {
-      setInfoLoading(false);
+    } catch (error) {
+      console.error('获取用户信息详情失败：', error);
+      return null;
     }
+
   };
+
+
 
   const addFriend = async (item: Friend) => {
     console.log("trying to add friend", item);
@@ -325,19 +332,12 @@ const SearchUserPage: React.FC = () => {
                   >
                     {item.is_friend ? "已添加" : "添加好友"}
                   </Button>
-
-                  <Popover
-                    title="用户信息"
-                    trigger="click"
-                    open={openPopoverUser === item.userName}
-                    onOpenChange={(visible) => {
-                      if (visible) fetchUserInfo(item.userName);
-                      else setOpenPopoverUser(null);
-                    }}
-                    content={renderPopoverContent()}
+                  <Button
+                    type="primary"
+                    onClick={() => handleSearchItemClick(item.userName)}
+                    icon={<InfoCircleOutlined />}
                   >
-                    <Button type="default">查看信息</Button>
-                  </Popover>
+                  </Button>
                 </Space>,
               ]}
             >
@@ -353,5 +353,3 @@ const SearchUserPage: React.FC = () => {
     </Space>
   );
 };
-
-export default SearchUserPage;

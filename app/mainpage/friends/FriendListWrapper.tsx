@@ -692,9 +692,6 @@ const Page = () => {
 
     return (
         <Flex vertical gap="middle" style={{ padding: 24 }}>
-            <Flex gap="small">
-                <Button onClick={() => router.push("/searchuser")}>searchuser</Button>
-            </Flex>
 
             {pendingRequests.length > 0 && (
                 <div

@@ -45,7 +45,7 @@ export default function ProfilePage() {
             setUserName(storedUserName);
         }
     }, []);
-    
+
     // 🎯 获取用户信息
     const fetchProfile = async () => {
         try {
@@ -348,7 +348,7 @@ export default function ProfilePage() {
                             <Title level={4} style={{ marginTop: 16 }}>
                                 {userInfo.userName}
                             </Title>
-                            
+
                             <Descriptions column={1} bordered size="small">
                                 <Descriptions.Item label="昵称">{userInfo.nickName}</Descriptions.Item>
                                 <Descriptions.Item label="邮箱">{userInfo.email}</Descriptions.Item>

@@ -7,14 +7,18 @@ import {
     MessageOutlined,
     SettingOutlined,
     UsergroupAddOutlined,
+    SearchOutlined,
+    NotificationOutlined
 } from '@ant-design/icons';
 
 const { Sider, Content } = Layout;
 
 // 将当前路径映射为导航栏选中的 key
 const getSelectedKey = (pathname: string): string => {
+    if (pathname.startsWith('/mainpage/notification')) return 'notification';
     if (pathname.startsWith('/mainpage/chat')) return 'chat';
     if (pathname.startsWith('/mainpage/friends')) return 'friends';
+    if (pathname.startsWith('/mainpage/searchuser')) return 'searchuser';
     if (
         pathname.startsWith('/mainpage/profile') ||
         pathname.startsWith('/mainpage/editProfile')
@@ -53,19 +57,29 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
                     style={{ borderRight: 0 }}
                 >
                     <Menu.Item
+                        key="notification"
+                        icon={<NotificationOutlined style={iconStyle} />}
+                        style={{ height: '60px', lineHeight: '60px' }}
+                    />
+                    <Menu.Item
                         key="chat"
                         icon={<MessageOutlined style={iconStyle} />}
                         style={{ height: '60px', lineHeight: '60px' }}
                     />
-                    <Menu.Item 
-                        key="friends" 
+                    <Menu.Item
+                        key="friends"
                         icon={<UsergroupAddOutlined style={iconStyle} />}
                         style={{ height: '60px', lineHeight: '60px' }}
                     />
-                    <Menu.Item 
-                        key="editProfile" 
+                    <Menu.Item
+                        key="searchuser"
+                        icon={<SearchOutlined style={iconStyle} />}
+                        style={{ height: '60px', lineHeight: '60px' }}
+                    />
+                    <Menu.Item
+                        key="editProfile"
                         icon={<SettingOutlined style={iconStyle} />}
-                        style={{ height: '60px', lineHeight: '60px' }} 
+                        style={{ height: '60px', lineHeight: '60px' }}
                     />
                 </Menu>
             </Sider>
