@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import {
     Avatar, Typography, Spin, message, Space, Divider
 } from 'antd';
@@ -17,7 +18,7 @@ interface UserProfile {
     phone: string;
 }
 
-export default function FriendInfoPage() {
+const FriendInfo = () => {
     const searchParams = useSearchParams();
     const username = searchParams.get('infoUserName');
     const router = useRouter();
@@ -78,5 +79,12 @@ export default function FriendInfoPage() {
                 <Divider />
             </Space>
         </div>
+    );
+}
+export default function Page() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <FriendInfo />
+        </Suspense>
     );
 }
