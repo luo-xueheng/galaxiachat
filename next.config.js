@@ -21,7 +21,11 @@ const nextConfig = {
                 destination: "https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/:path*/"
             },
             {
-                source: "/mainpage/friends/:path*",
+                source: "/mainpage/friends/api/:path*",
+                destination: "https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/:path*/"
+            },
+            {
+                source: "/mainpage/searchuser/api/:path*",
                 destination: "https://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/:path*/"
             }
         ];

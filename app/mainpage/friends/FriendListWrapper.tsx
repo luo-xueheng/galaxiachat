@@ -201,9 +201,6 @@ export default function FriendListPage() {
         }
     };
 
-
-
-
     //删除好友
     const handleDelete = async (userNameToDelete: string, groupId?: string) => {
         const token = localStorage.getItem("token");
@@ -276,6 +273,7 @@ export default function FriendListPage() {
         }
     };
 
+    // 创建会话
     const handleCreateConversation = async (friendUserName: string) => {
         console.log("创建会话", friendUserName);
         const currentUser = localStorage.getItem("userName");
@@ -303,7 +301,7 @@ export default function FriendListPage() {
             if (data.action === "conversation_created" && data.success) {
                 const conversationId = data.conversation.id;
                 router.push(
-                    `/chat/${conversationId}?${new URLSearchParams({
+                    `/mainpage/chat/${conversationId}?${new URLSearchParams({
                         chatId: conversationId.toString(),
                         isGroupChat: "false",
                         friendUserName: friendUserName,
@@ -325,7 +323,7 @@ export default function FriendListPage() {
     const handleSearchItemClick = async (username: string) => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`${BACKEND_URL}/api/user/${username}`, {
+            const response = await fetch(`api/user/${username}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -348,7 +346,7 @@ export default function FriendListPage() {
 
     };
 
-    // 渲染好友列表时，提供分组选择功能, 以及进入会话功能
+    // 渲染好友列表时，提供分组选择功能
     const renderFriendList = (friends: Friend[], showGroupOptions = false, groupId?: string) => (
         <List
             itemLayout="horizontal"
@@ -400,32 +398,24 @@ export default function FriendListPage() {
                         >
                             <Button danger>删除</Button>
                         </Popconfirm>,
-                        <>
-                            <Button
-                                key="chat"
-                                onClick={() => handleCreateConversation(friend.userName)}
-                            >
-                                发消息
-                            </Button>
-
-                            <Button
-                                type="primary"
-                                onClick={() => handleSearchItemClick(friend.userName)}
-                                icon={<InfoCircleOutlined />}
-                            >
-                            </Button>
-                        </>,
-
                     ]}
                 >
-                    <List.Item.Meta
-                        avatar={<Avatar src={friend.avatar} />}
-                        title={friend.userName}
-                    />
+                    {/* 点击整个区域展示好友信息（排除删除按钮） */}
+                    <div
+                        onClick={() => handleSearchItemClick(friend.userName)}
+                        style={{ display: 'flex', alignItems: 'center', flex: 1, cursor: 'pointer' }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Avatar src={friend.avatar} style={{ marginRight: 12 }} />
+                            <span style={{ fontSize: 16 }}>{friend.userName}</span>
+                        </div>
+
+                    </div>
                 </List.Item>
             )}
         />
     );
+
 
 
 

@@ -38,7 +38,7 @@ const FriendInfo = () => {
             setLoading(true);
             try {
                 const token = localStorage.getItem('token');
-                const res = await fetch(`${BACKEND_URL}/api/user/${username}`, {
+                const res = await fetch(`api/user/${username}`, {
                     headers: {
                         'Authorization': token ?? '',
                     },

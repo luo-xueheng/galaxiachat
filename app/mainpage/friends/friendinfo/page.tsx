@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Suspense } from 'react';
 import {
-    Avatar, Typography, Spin, message, Space, Divider, Button
+    Avatar, Typography, Spin, message, Space, Divider, Button, Modal
 } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BACKEND_URL } from "../../../constants/string";
@@ -38,7 +38,7 @@ const FriendInfo = () => {
             setLoading(true);
             try {
                 const token = localStorage.getItem('token');
-                const res = await fetch(`${BACKEND_URL}/api/user/${username}`, {
+                const res = await fetch(`api/user/${username}`, {
                     headers: {
                         'Authorization': token ?? '',
                     },
@@ -74,6 +74,53 @@ const FriendInfo = () => {
             </div>
         );
     }
+
+    // ✅ 处理创建会话的函数
+    const handleCreateConversation = async (friendUserName: string) => {
+        console.log("创建会话", friendUserName);
+        const currentUser = localStorage.getItem("userName");
+        const currentUserToken = localStorage.getItem("token");
+
+        if (!currentUser || !currentUserToken) {
+            message.error("请先登录");
+            return;
+        }
+
+        const ws = new WebSocket(`wss://2025-backend-galaxia-galaxia.app.spring25b.secoder.net/ws/chat/new/?token=${currentUserToken}`);
+
+        ws.onopen = () => {
+            ws.send(JSON.stringify({
+                action: "create_conversation",
+                user_username: currentUser,
+                is_group: false,
+                member_usernames: [friendUserName],
+                name: ""
+            }));
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.action === "conversation_created" && data.success) {
+                const conversationId = data.conversation.id;
+                router.push(
+                    `/mainpage/chat/${conversationId}?${new URLSearchParams({
+                        chatId: conversationId.toString(),
+                        isGroupChat: "false",
+                        friendUserName: friendUserName,
+                    }).toString()}`
+                ); // 将 friendUserName 作为查询参数传递
+                ws.close();
+            } else {
+                message.error("创建会话失败");
+                ws.close();
+            }
+        };
+
+        ws.onerror = () => {
+            message.error("WebSocket 连接失败");
+        };
+    };
+    
 
     return (
         <div
@@ -141,7 +188,7 @@ const FriendInfo = () => {
                 <div style={{ textAlign: 'center' }}>
                     <Space size={100}>
                         <div
-                            onClick={() => console.log('发消息')}
+                            onClick={() => handleCreateConversation(userInfo.userName)}
                             style={{
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -152,20 +199,6 @@ const FriendInfo = () => {
                         >
                             <MessageOutlined style={{ fontSize: 24, marginBottom: 4 }} />
                             <span style={{ fontSize: 12 }}>发消息</span>
-                        </div>
-
-                        <div
-                            onClick={() => console.log('删除')}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                cursor: 'pointer',
-                                color: '#ff4d4f',
-                            }}
-                        >
-                            <DeleteOutlined style={{ fontSize: 24, marginBottom: 4 }} />
-                            <span style={{ fontSize: 12 }}>删除</span>
                         </div>
 
                     </Space>
