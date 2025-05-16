@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { 
-    List, Avatar, Tabs, Badge, Button, 
+import {
+    List, Avatar, Tabs, Badge, Button,
     Dropdown, MenuProps, message, Space, Typography,
-    Modal } from 'antd';
+    Modal
+} from 'antd';
 import {
     TeamOutlined,
     PlusOutlined,
@@ -47,7 +48,7 @@ export default function ChatListPage() {
         setToken(localStorage.getItem('token') || '');
     }, []);
 
-    // 获取用户昵称
+    // 获取当前用户昵称
     const [nickname, setNickname] = useState(null);
     useEffect(() => {
         const fetchNickname = async () => {
@@ -112,6 +113,11 @@ export default function ChatListPage() {
         if (!conversationName.includes(' ↔ ')) return null;
         const names = conversationName.split(' ↔ ');
         return names.find(name => name !== currentUser) || null;
+    };
+
+    // 获取好友NickName
+    const getNickname = (userName: string): string => {
+        return userName;
     };
 
     // 获取并设置头像
@@ -223,7 +229,12 @@ export default function ChatListPage() {
                         ? { ...conv, is_muted: muteStatus } // 使用原始布尔值更新状态
                         : conv
                 ));
-                alert(`已${currentConversation.is_muted ? '取消' : '设置'}【${currentConversation.conversation_name}】的免打扰`);
+                if (currentConversation.is_group) {
+                    alert(`已${currentConversation.is_muted ? '取消' : '设置'}【${currentConversation.conversation_name}】的免打扰`);
+                } else {
+                    console.log('当前会话不是群聊');
+                    alert(`已${currentConversation.is_muted ? '取消' : '设置'}【${getPrivateChatPartner(currentConversation.conversation_name)}】的免打扰`);
+                }
             } else {
                 const errorData = await response.json();
                 message.error(errorData.info || '操作失败');
@@ -279,9 +290,12 @@ export default function ChatListPage() {
                     return sortConversations(updated);
                 });
 
-                message.success(
-                    `已${currentConversation.is_pinned ? '取消' : '设置'}【${currentConversation.conversation_name}】置顶`
-                );
+                if (currentConversation.is_group) {
+                    alert(`已${currentConversation.is_pinned ? '取消' : '设置'}【${currentConversation.conversation_name}】置顶`);
+                } else {
+                    alert(`已${currentConversation.is_pinned ? '取消' : '设置'}【${getPrivateChatPartner(currentConversation.conversation_name)}】置顶`);
+                }
+
             } else {
                 const errorData = await response.json();
                 message.error(errorData.info || '置顶操作失败');
@@ -364,7 +378,7 @@ export default function ChatListPage() {
             label: '添加好友',
             onClick: () => {
                 console.log("🎯触发添加好友");
-                // router.push('/mainpage/friends'); // 跳转到添加好友页面
+                router.push('/mainpage/searchuser'); // 跳转到添加好友页面
             }
         },
     ];
@@ -385,25 +399,27 @@ export default function ChatListPage() {
     ];
 
     return (
-        <div 
-            className="chat-list-container" 
-            style={{ 
-                height: '100vh', 
-                display: 'flex', 
+        <div
+            className="chat-list-container"
+            style={{
+                height: '100vh',
+                display: 'flex',
                 flexDirection: 'column'
             }}
         >
             {/* 头部保持不变 */}
-            <div 
-                style={{ 
-                    padding: '16px', 
-                    borderBottom: '1px solid #d9d0ff', 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+            <div
+                style={{
+                    padding: '16px',
+                    borderBottom: '1px solid #d9d0ff',
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center'
                 }}
             >
-                <Title level={4}>欢迎，{nickname !== null ? nickname : '未设置昵称'} 👋</Title>
+                <div style={{ textAlign: 'center', width: '100%', fontSize: '20px', fontWeight: 'bold' }}>
+                    欢迎👋 {nickname !== null ? nickname : '未设置昵称'}
+                </div>
                 <Dropdown menu={{ items }} trigger={['click']}>
                     <Button type="text" icon={<PlusOutlined />} />
                 </Dropdown>
@@ -424,7 +440,7 @@ export default function ChatListPage() {
                 centered
                 onChange={setActiveTab}
                 items={tabItems}
-                style={{ padding: '0 16px', color: '#ffffff' }}
+                style={{ padding: '0 16px', color: '#5e3dbb' }}
                 tabBarStyle={{ borderBottom: '1px solid #d9d0ff' }}
             />
 
@@ -487,7 +503,7 @@ export default function ChatListPage() {
                                         <span style={{ fontWeight: item.is_pinned ? 500 : 'normal' }}>
                                             {item.is_group
                                                 ? item.conversation_name
-                                                : getPrivateChatPartner(item.conversation_name) || item.conversation_name}
+                                                : getNickname(getPrivateChatPartner(item.conversation_name)) || item.conversation_name}
                                             {item.is_pinned && (
                                                 <span style={{ marginLeft: 8, color: '#5e3dbb', fontSize: 12 }}>[置顶]</span>
                                             )}
@@ -496,7 +512,7 @@ export default function ChatListPage() {
                                             <Badge
                                                 count={item.unread_count}
                                                 style={{
-                                                    backgroundColor: item.is_muted ? '#d9d9d9' : '#1890ff'
+                                                    backgroundColor: item.is_muted ? '#d9d9d9' : '#5e3dbb'
                                                 }}
                                             />
                                         )}
@@ -512,7 +528,9 @@ export default function ChatListPage() {
                                             fontWeight: item.is_pinned ? 500 : 'normal'
                                         }}
                                     >
-                                        {item.last_message || `最后更新: ${formatTime(item.updated_at)}`}
+                                        {item.is_group
+                                            ? ""
+                                            : getPrivateChatPartner(item.conversation_name) || item.conversation_name}
                                     </div>
                                 }
                             />

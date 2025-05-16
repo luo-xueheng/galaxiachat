@@ -6,7 +6,7 @@ import {
     Input, Row, Button, message, Divider,
     Typography, Space, Spin, Upload, Popconfirm
 } from 'antd';
-import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
+import { LoadingOutlined, PlusOutlined, UserOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { setName, setToken } from "../../redux/auth";
@@ -345,16 +345,32 @@ export default function ProfilePage() {
                             </Upload>
                             <Typography.Text type="secondary">点击上传新头像</Typography.Text>
 
-                            <Title level={4} style={{ marginTop: 16 }}>
-                                {userInfo.userName}
+                            <Title level={4} style={{ marginBottom: 4 }}>
+                                {userInfo.nickName || '未设置昵称'}
                             </Title>
 
-                            <Descriptions column={1} bordered size="small">
-                                <Descriptions.Item label="昵称">{userInfo.nickName}</Descriptions.Item>
-                                <Descriptions.Item label="邮箱">{userInfo.email}</Descriptions.Item>
-                                <Descriptions.Item label="手机号">{userInfo.phone}</Descriptions.Item>
-                            </Descriptions>
+                            <div style={{ textAlign: 'center' }}>
+                                <Space
+                                    direction="vertical"
+                                    size="middle"
+                                    style={{ width: '100%' }}
+                                >
+                                    <Text>
+                                        <UserOutlined style={{ marginRight: 8 }} />
+                                        <b>用户名：</b>{userInfo.userName}
+                                    </Text>
+                                    <Text>
+                                        <MailOutlined style={{ marginRight: 8 }} />
+                                        <b>邮箱：</b>{userInfo.email || '未绑定'}
+                                    </Text>
+                                    <Text>
+                                        <PhoneOutlined style={{ marginRight: 8 }} />
+                                        <b>手机号：</b>{userInfo.phone || '未绑定'}
+                                    </Text>
+                                </Space>
+                            </div>
                         </Space>
+
                         <div style={{ textAlign: 'center', marginTop: 24 }}>
                             <Space>
                                 <Button type="primary" danger onClick={logout}>
@@ -379,15 +395,7 @@ export default function ProfilePage() {
                 {/* 右侧编辑信息 */}
                 <Col span={16}>
                     {/* 修改昵称 */}
-                    <Card title="基本信息设置">
-                        <Descriptions column={1} bordered size="small">
-                            <Descriptions.Item label="昵称">{userInfo.nickName}</Descriptions.Item>
-                            <Descriptions.Item label="邮箱">{userInfo.email}</Descriptions.Item>
-                            <Descriptions.Item label="手机号">{userInfo.phone}</Descriptions.Item>
-                        </Descriptions>
-
-                        <Divider />
-
+                    <Card title="昵称修改">
                         <Form layout="vertical" form={form} onFinish={handleBasicFinish}>
                             <Form.Item label="昵称" name="nickName">
                                 <Input placeholder="请输入昵称" />

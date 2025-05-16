@@ -545,7 +545,7 @@ export default function ChatPage() {
                     }
                     trigger={['click']}
                 >
-                    <Button type="default" icon={<EllipsisOutlined />} />
+                    <Button type="text" icon={<EllipsisOutlined />} />
 
                 </Dropdown>
             </Header>
