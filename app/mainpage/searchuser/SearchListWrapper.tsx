@@ -5,13 +5,15 @@ import {
 } from '@ant-design/icons';
 
 import React, { useState, useEffect } from 'react';
-import { Input, List, Avatar, Button, Space, message, Empty, Popover, Spin } from 'antd';
+import { Input, List, Avatar, Button, Space, message, Empty, Spin, Typography } from 'antd';
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { setName, setToken } from "../../redux/auth";
 import type { GetProps } from 'antd';
 import { RootState } from "../../redux/store";
 import { BACKEND_URL } from "../../constants/string";
+
+const { Title } = Typography;
 
 type SearchProps = GetProps<typeof Input.Search>;
 
@@ -300,12 +302,7 @@ export default function SearchListPage() {
 
   return (
     <Space direction="vertical" style={{ width: '100%', padding: '24px' }}>
-      <div style={{ fontWeight: 'bold', fontSize: '16px' }}>
-        👤 当前用户：{userName}
-      </div>
-      <Button type="link" onClick={() => router.push('/mainpage/friends')}>
-        ← 返回主页
-      </Button>
+      <Title level={2} style={{ margin: 0 }}>搜索用户</Title>
       <Search
         placeholder="搜索用户名"
         onSearch={onSearch}

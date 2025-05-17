@@ -1,21 +1,11 @@
 'use client';
 
 import {
-    Button,
-    Flex,
-    List,
-    Avatar,
-    Collapse,
-    Typography,
-    message,
-    Popconfirm,
-    Dropdown,
-    Menu,
-    Select,
+    Button, Flex, List, Avatar, Collapse, 
+    Typography, message, Popconfirm, Dropdown, Menu,
+    Select, Input, Space, Alert,
 } from "antd";
-import {
-    InfoCircleOutlined
-} from '@ant-design/icons';
+import { DownOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
@@ -355,18 +345,28 @@ export default function FriendListPage() {
                 <List.Item
                     actions={[
                         showGroupOptions ? (
-                            <div key="group-options">
-                                {availableGroups.map((group) => (
-                                    <Button
-                                        size="small"
-                                        style={{ marginRight: 4, marginBottom: 4 }}
-                                        key={group}
-                                        onClick={() => moveToGroup(friend.userName, group)}
-                                    >
-                                        加入 {group}
-                                    </Button>
-                                ))}
-                            </div>
+                            <Dropdown
+                                key="group-options"
+                                overlay={
+                                    <Menu
+                                        onClick={({ key }) => moveToGroup(friend.userName, key)}
+                                        items={[
+                                            ...availableGroups.map((g) => ({
+                                                key: g,
+                                                label: `加入 ${g}`,
+                                            })),
+                                            {
+                                                key: '', // 空字符串表示移出分组
+                                                label: '移出分组',
+                                            },
+                                        ]}
+                                    />
+                                }
+                            >
+                                <Button>
+                                    加入分组 <DownOutlined />
+                                </Button>
+                            </Dropdown>
                         ) : (
                             <Dropdown
                                 key="group"
@@ -396,7 +396,13 @@ export default function FriendListPage() {
                             cancelText="取消"
                             key="delete"
                         >
-                            <Button danger>删除</Button>
+                            <Button
+                                danger
+                                size="small"
+                                style={{ minWidth: 60, padding: '0 8px', letterSpacing: 0 }}
+                            >
+                                删除
+                            </Button>
                         </Popconfirm>,
                     ]}
                 >
@@ -417,34 +423,51 @@ export default function FriendListPage() {
     );
 
 
-
-
     return (
         <Flex vertical gap="middle" style={{ padding: 24 }}>
-
-
-            <Flex gap="middle" style={{ marginTop: 16 }}>
-                <div>
-                    <input
-                        type="text"
-                        placeholder="新分组名"
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Title level={2} style={{ margin: 0 }}>好友列表</Title>
+                <Button onClick={fetchFriends} loading={loading} icon={<ReloadOutlined />}>
+                    刷新好友列表
+                </Button>
+            </div>
+            <Space direction="vertical" size="large" style={{ marginTop: 0, width: '100%' }}>
+                {/* 添加分组 */}
+                <Input.Group compact style={{ display: 'flex', gap: 8 }}>
+                    <Input
+                        style={{ flex: 1 }}
+                        placeholder="请输入新的分组名称"
                         value={newGroupName}
                         onChange={(e) => {
-                            setNewGroupName(e.target.value)
-                            setGroupError(null); // 清除错误信息
+                            setNewGroupName(e.target.value);
+                            setGroupError(null);
                         }}
                     />
-                    <Button type="primary" onClick={addGroup} style={{ marginLeft: 8 }}>
+                    <Button
+                        type="primary"
+                        onClick={addGroup}
+                        style={{
+                            backgroundColor: '#5e3dbb',
+                            borderColor: '#5e3dbb',
+                        }}
+                    >
                         添加分组
                     </Button>
-                    {groupError && (
-                        <div style={{ color: "red", marginTop: 4 }}>{groupError}</div>
-                    )}
-                </div>
-                <div>
+                </Input.Group>
+                {groupError && (
+                    <Alert
+                        message={groupError}
+                        type="error"
+                        showIcon
+                        style={{ marginTop: 8 }}
+                    />
+                )}
+
+                {/* 删除分组 */}
+                <Input.Group compact style={{ display: 'flex', gap: 8 }}>
                     <Select
                         placeholder="选择要删除的分组"
-                        style={{ width: 200 }}
+                        style={{ flex: 1 }}
                         value={selectedGroupId}
                         onChange={(value) => setSelectedGroupId(value)}
                         options={availableGroups.map((group) => ({
@@ -452,16 +475,12 @@ export default function FriendListPage() {
                             value: group,
                         }))}
                     />
-                    <Button danger onClick={deleteGroup} style={{ marginLeft: 8 }}>
+                    <Button danger onClick={deleteGroup}>
                         删除分组
                     </Button>
-                </div>
-            </Flex>
+                </Input.Group>
+            </Space>
 
-            <Title level={3}>好友列表</Title>
-            <Button onClick={fetchFriends} loading={loading}>
-                刷新好友列表
-            </Button>
             <Collapse
                 defaultActiveKey={["uncategorized", ...(groups?.map((g) => g.id) || [])]}
             >

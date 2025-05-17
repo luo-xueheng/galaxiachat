@@ -360,7 +360,7 @@ const Page = () => {
     }
     return (
         <Flex vertical gap="middle" style={{ padding: 24 }}>
-
+            <Title level={2} style={{ margin: 0 }}>待处理邀请</Title>
             {pendingRequests.length > 0 && (
                 <div
                     style={{
