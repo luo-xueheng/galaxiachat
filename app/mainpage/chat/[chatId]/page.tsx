@@ -296,12 +296,14 @@ export default function ChatPage() {
 
             ws.onclose = (event) => {
                 console.warn('[WebSocket] 连接已关闭', event);
+                /*
                 if (event.code !== 1000) {
-                    console.log(`[WebSocket] 非正常关闭（code=${event.code}），${reconnectDelay / 1000}秒后尝试重连...`);
+                    console.log(`[WebSocket] 非正常关闭（code=${event.code}），${reconnectDelay / 3000}秒后尝试重连...`);
                     reconnectTimeoutRef.current = setTimeout(() => {
                         connectWebSocket();
                     }, reconnectDelay);
                 }
+                */
             };
 
             ws.onerror = (err) => {
