@@ -291,6 +291,18 @@ export default function ChatPage() {
                         );
 
                         console.log(`[WebSocket] 收到 message_read：${reader} 已读 ${msg_ids.length} 条消息`);
+                    } else if (data.action === 'reply_count_updated') {
+                        console.log('[WebSocket] 收到 reply_count_updated：', data);
+
+                        const { message_id, new_count } = data;
+
+                        setMessages(prev =>
+                            prev.map(msg =>
+                                msg.id === message_id
+                                    ? { ...msg, replyCount: new_count }
+                                    : msg
+                            )
+                        );
                     }
 
                 } catch (err) {
