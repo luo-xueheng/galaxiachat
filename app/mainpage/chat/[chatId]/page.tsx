@@ -670,22 +670,56 @@ export default function ChatPage() {
                                     >
 
                                         {/* 回复的消息内容 */}
-                                        {item.replyToId && (
-                                            <div
-                                                style={{
-                                                    padding: '6px 12px',
-                                                    marginBottom: '4px',
-                                                    backgroundColor: '#fafafa',
-                                                    borderLeft: '3px solid #d9d9d9',
-                                                    cursor: 'pointer',
-                                                    fontSize: '12px',
-                                                }}
-                                                onClick={() => scrollToMessage(item.replyToId!)}
-                                            >
-                                                回复 @{messages.find((msg) => msg.id === item.replyToId)?.sender}
-                                                ：{messages.find((msg) => msg.id === item.replyToId)?.content.slice(0, 30) || '（内容已丢失）'}
-                                            </div>
-                                        )}
+                                        {item.replyToId && (() => {
+                                            const repliedMsg = messages.find((msg) => msg.id === item.replyToId);
+                                            if (!repliedMsg) {
+                                                return (
+                                                    <div
+                                                        style={{
+                                                            padding: '6px 12px',
+                                                            marginBottom: '4px',
+                                                            backgroundColor: '#fafafa',
+                                                            borderLeft: '3px solid #d9d9d9',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px',
+                                                        }}
+                                                    >
+                                                        回复：（内容已丢失）
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div
+                                                    style={{
+                                                        padding: '6px 12px',
+                                                        marginBottom: '4px',
+                                                        backgroundColor: '#fafafa',
+                                                        borderLeft: '3px solid #d9d9d9',
+                                                        cursor: 'pointer',
+                                                        fontSize: '12px',
+                                                    }}
+                                                    onClick={() => scrollToMessage(repliedMsg.id)}
+                                                >
+                                                    回复 @{repliedMsg.sender}：
+                                                    {repliedMsg.msgType === 'image' ? (
+                                                        <Image
+                                                            src={repliedMsg.content}
+                                                            alt="被回复的图片"
+                                                            style={{ maxWidth: 60, maxHeight: 60, borderRadius: 4, marginLeft: 8 }}
+                                                            preview={{
+                                                                mask: '点击预览',
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <span style={{ marginLeft: 8 }}>
+                                                            {repliedMsg.content.slice(0, 30)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+
 
                                         {/* 发送的消息内容 */}
                                         <div>
