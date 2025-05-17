@@ -32,6 +32,7 @@ interface Conversation {
     updated_at: string;
     last_message?: string;
     avatar?: string;
+    nickname?: string;
 }
 
 export default function ChatListPage() {
@@ -107,6 +108,30 @@ export default function ChatListPage() {
         }
     };
 
+    // 获取用户昵称
+    const fetchUserNickname = async (userName: string): Promise<string | undefined> => {
+        const token = localStorage.getItem("token"); // 获取当前用户的token
+        try {
+            const response = await fetch(`/api/user/${userName}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: token,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('获取昵称失败');
+            }
+
+            const data = await response.json();
+            console.log('获取用户昵称成功：', data.nickName);
+            return data.nickName;
+        } catch (error) {
+            console.error('获取用户昵称出错:', error);
+            return undefined;
+        }
+    };
+
     // 处理私聊会话名称，提取对方用户名
     const getPrivateChatPartner = (conversationName: string): string | null => {
         const currentUser = localStorage.getItem("userName"); // 获取当前用户的用户名
@@ -115,26 +140,23 @@ export default function ChatListPage() {
         return names.find(name => name !== currentUser) || null;
     };
 
-    // 获取好友NickName
-    const getNickname = (userName: string): string => {
-        return userName;
-    };
-
-    // 获取并设置头像
+    // 获取并设置头像和昵称
     const fetchAndSetAvatars = async (conversations: Conversation[]) => {
         const updatedConversations = await Promise.all(
             conversations.map(async (conv) => {
                 if (conv.is_group) {
-                    return { ...conv, avatar: undefined }; // 群聊使用默认图标
+                    return { ...conv, avatar: undefined, nickname: "" }; // 群聊使用默认图标
                 }
 
                 const partnerName = getPrivateChatPartner(conv.conversation_name);
                 if (!partnerName) {
-                    return { ...conv, avatar: undefined };
+                    return { ...conv, avatar: undefined, nickname: "" }; // 如果没有找到对方用户名，则不设置头像和昵称
                 }
 
                 const avatar = await fetchUserAvatar(partnerName);
-                return { ...conv, avatar };
+                const nickname = await fetchUserNickname(partnerName);
+                console.log('获取头像和昵称成功：', { avatar, nickname });
+                return { ...conv, avatar, nickname };
             })
         );
 
@@ -503,7 +525,7 @@ export default function ChatListPage() {
                                         <span style={{ fontWeight: item.is_pinned ? 500 : 'normal' }}>
                                             {item.is_group
                                                 ? item.conversation_name
-                                                : getNickname(getPrivateChatPartner(item.conversation_name)) || item.conversation_name}
+                                                : item.nickname || item.conversation_name}
                                             {item.is_pinned && (
                                                 <span style={{ marginLeft: 8, color: '#5e3dbb', fontSize: 12 }}>[置顶]</span>
                                             )}
