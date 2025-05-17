@@ -277,10 +277,14 @@ export default function ChatPage() {
                                 } else {
                                     // 群聊：把 reader 加入 readBy 列表（去重）
                                     const alreadyRead = msg.readBy.includes(reader);
-                                    return {
-                                        ...msg,
-                                        readBy: alreadyRead ? msg.readBy : [...msg.readBy, reader],
-                                    };
+                                    if (reader !== currentUser) {
+                                        return {
+                                            ...msg,
+                                            readBy: alreadyRead ? msg.readBy : [...msg.readBy, reader],
+                                        };
+                                    } else {
+                                        return msg;
+                                    }
                                 }
 
                             })
