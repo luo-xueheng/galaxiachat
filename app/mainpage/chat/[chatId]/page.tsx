@@ -178,7 +178,7 @@ export default function ChatPage() {
 
     // 🎯 建立 WebSocket 连接，监听新消息
     const [socket, setSocket] = useState<WebSocket | null>(null);
-    const reconnectDelay = 1000; // 1秒后尝试重连
+    const reconnectDelay = 3000; // 1秒后尝试重连
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
@@ -263,21 +263,26 @@ export default function ChatPage() {
                             prev.map(msg => {
                                 if (!msg_ids.includes(msg.id)) return msg;
 
-                                // 私聊：如果 reader 不是自己，那就标记 isRead 为 true
-                                if (!msg.readBy || msg.readBy.length <= 1) {
+                                if (!isGroupChat) {
+                                    // 私聊：只有一个对方用户，reader 不是自己就标记为已读
+                                    if (reader !== currentUser) {
+                                        return {
+                                            ...msg,
+                                            isRead: true,
+                                            readBy: [reader],
+                                        };
+                                    } else {
+                                        return msg;
+                                    }
+                                } else {
+                                    // 群聊：把 reader 加入 readBy 列表（去重）
+                                    const alreadyRead = msg.readBy.includes(reader);
                                     return {
                                         ...msg,
-                                        isRead: true,
-                                        readBy: [reader],
+                                        readBy: alreadyRead ? msg.readBy : [...msg.readBy, reader],
                                     };
                                 }
 
-                                // 群聊：加进 readBy（去重）
-                                const alreadyRead = msg.readBy.includes(reader);
-                                return {
-                                    ...msg,
-                                    readBy: alreadyRead ? msg.readBy : [...msg.readBy, reader],
-                                };
                             })
                         );
 
