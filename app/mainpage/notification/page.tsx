@@ -45,7 +45,9 @@ type Group = {
 type FriendRequest = {
     request_id: string;
     sender_name: string;
+    sender_nickname: string;
     request_type: string;
+
 };
 
 type GroupRequest = {
@@ -54,6 +56,8 @@ type GroupRequest = {
     inviter_name: string;
     invitee_name: string;
     notification_id: string;
+    inviter: string;
+    invitee: string;
 };
 
 let ws_friend_request: WebSocket | null = null;
@@ -89,6 +93,30 @@ const Page = () => {
 
     }, []);
 
+    // 获取用户昵称
+    const fetchUserNickname = async (userName: string): Promise<string | undefined> => {
+        const token = localStorage.getItem("token"); // 获取当前用户的token
+        try {
+            const response = await fetch(`/api/user/${userName}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: token,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('获取昵称失败');
+            }
+
+            const data = await response.json();
+            console.log('获取用户昵称成功：', data.nickName);
+            return data.nickName;
+        } catch (error) {
+            console.error('获取用户昵称出错:', error);
+            return undefined;
+        }
+    };
+
     useEffect(() => {
         const storedToken = localStorage.getItem("token");
         const storedUserName = localStorage.getItem("userName");
@@ -123,26 +151,39 @@ const Page = () => {
                     ws_friend_request = null;
                 };
 
-                ws_friend_request.onmessage = (event) => {
+                ws_friend_request.onmessage = async (event) => {
                     const data = JSON.parse(event.data);
                     console.log("haoyoushenqing", data)
                     if (data.type === "friend_request" && data.sender_name && data.request_id) {
-                        setPendingRequests((prev) => {
-                            if (prev.some((r) => r.request_id === data.request_id)) {
-                                return prev; // 已存在，忽略
-                            }
-                            return [...prev, {
-                                request_id: data.request_id,
-                                sender_name: data.sender_name,
-                                request_type: data.request_type,
-                            }];
-
-                        });
+                        await handleFriendRequestUpdate(data);  // 🔄 使用异步函数处理
                     }
                 };
             });
         };
 
+        const handleFriendRequestUpdate = async (data: any) => {
+            const request_id = data.request_id;
+
+            // Step 1: 获取昵称（异步）
+            const senderNickname = await fetchUserNickname(data.sender_name);
+            // Step 2: 去重逻辑
+            setPendingRequests((prev) => {
+                const alreadyExists = prev.some((r) => r.request_id === request_id);
+                if (alreadyExists) return prev;
+
+                // Step 3: 添加新记录
+                return [
+                    ...prev,
+                    {
+                        request_id: data.request_id,
+                        sender_name: data.sender_name,
+                        sender_nickname: senderNickname,
+                        request_type: data.request_type,
+                    },
+                ];
+
+            });
+        };
         connectWebSocket();
     }, [dispatch]);
 
@@ -184,40 +225,14 @@ const Page = () => {
                     ws_friend_request = null;
                 };
 
-                ws_group_invite.onmessage = (event) => {
+                ws_group_invite.onmessage = async (event) => {
                     const data = JSON.parse(event.data);
                     console.log("群聊消息", data);
                     if (data.type === "group_invitation" && data.data.status === "pending_review") {
-                        console.log("herependingreview")
-                        setPendingRequestsgroupreview((prev) => {
-                            if (prev.some((r) => r.invite_id === data.data.invite_id)) {
-                                return prev; // 已存在，忽略
-                            }
-                            return [...prev, {
-                                invite_id: data.data.invite_id,
-                                group_name: data.data.group_name,
-                                inviter_name: data.data.inviter_username,
-                                invitee_name: data.data.invitee_username,
-                                notification_id: data.notification_id,
-                            }];
-
-                        });
-                        console.log("pendinggroupreview" + pendingRequestsgroupreview)
+                        await handleInviteUpdateReview(data);  // 🔄 使用异步函数处理
                     }
                     else if (data.type === "group_invitation" && data.data.status === "approved") {
-                        setPendingRequestsgroupinvitee((prev) => {
-                            if (prev.some((r) => r.invite_id === data.data.invite_id)) {
-                                return prev; // 已存在，忽略
-                            }
-                            return [...prev, {
-                                invite_id: data.data.invite_id,
-                                group_name: data.data.group_name,
-                                inviter_name: data.data.inviter_username,
-                                invitee_name: localStorage.getItem("userName"),
-                                notification_id: data.notification_id,
-                            }];
-
-                        });
+                        await handleInviteUpdateGroupInviteMe(data);  // 🔄 使用异步函数处理
                     }
                     else if (data.type === "remove") {
                         handle_removed(data.notification_id);
@@ -231,8 +246,66 @@ const Page = () => {
             });
         };
 
+
+        const handleInviteUpdateGroupInviteMe = async (data: any) => {
+            const invite_id = data.data.invite_id;
+
+            // Step 1: 获取昵称（异步）
+            const inviteeNickname = await fetchUserNickname(localStorage.getItem("userName"));
+            const inviterNickname = await fetchUserNickname(data.data.inviter_username);
+
+            // Step 2: 去重逻辑
+            setPendingRequestsgroupinvitee((prev) => {
+                const alreadyExists = prev.some((r) => r.invite_id === invite_id);
+                if (alreadyExists) return prev;
+
+                // Step 3: 添加新记录
+                return [
+                    ...prev,
+                    {
+                        invite_id,
+                        group_name: data.data.group_name,
+                        inviter_name: data.data.inviter_username,
+                        invitee_name: localStorage.getItem("userName"),
+                        notification_id: data.notification_id,
+                        inviter: inviterNickname,
+                        invitee: inviteeNickname,
+                    },
+                ];
+            });
+        };
+
+        const handleInviteUpdateReview = async (data: any) => {
+            const invite_id = data.data.invite_id;
+
+            // Step 1: 获取昵称（异步）
+            const inviteeNickname = await fetchUserNickname(data.data.invitee_username);
+            const inviterNickname = await fetchUserNickname(data.data.inviter_username);
+
+            // Step 2: 去重逻辑
+            setPendingRequestsgroupreview((prev) => {
+                const alreadyExists = prev.some((r) => r.invite_id === invite_id);
+                if (alreadyExists) return prev;
+
+                // Step 3: 添加新记录
+                return [
+                    ...prev,
+                    {
+                        invite_id,
+                        group_name: data.data.group_name,
+                        inviter_name: data.data.inviter_username,
+                        invitee_name: data.data.invitee_username,
+                        notification_id: data.notification_id,
+                        inviter: inviterNickname,
+                        invitee: inviteeNickname,
+                    },
+                ];
+            });
+        };
+
         connectWebSocketgroup();
     }, [dispatch]);
+
 
     const sendFriendResponse = (request_id: string, response: "accept" | "reject") => {
         ws_friend_request = new WebSocket(
@@ -407,7 +480,7 @@ const Page = () => {
                             >
                                 <List.Item.Meta
                                     title={request.sender_name}
-                                    description={`请求加你为好友（类型：${request.request_type}）`}
+                                    description={`${request.sender_name}(昵称：${request.sender_nickname}）请求加你为好友（类型：${request.request_type}）`}
                                 />
                             </List.Item>
                         )}
@@ -448,7 +521,7 @@ const Page = () => {
                             >
                                 <List.Item.Meta
                                     title={request.group_name}
-                                    description={`${request.inviter_name}邀请${request.invitee_name}加入群聊 ${request.group_name}`}
+                                    description={`${request.inviter_name}(昵称：${request.inviter}）邀请${request.invitee_name}(昵称：${request.invitee}）加入群聊 ${request.group_name}`}
                                 />
                             </List.Item>
                         )}
@@ -490,7 +563,7 @@ const Page = () => {
                             >
                                 <List.Item.Meta
                                     title={request.group_name}
-                                    description={`${request.inviter_name}邀请${request.invitee_name}加入群聊 ${request.group_name}`}
+                                    description={`${request.inviter_name}(昵称：${request.inviter}）邀请你加入群聊 ${request.group_name}`}
                                 />
                             </List.Item>
                         )}
