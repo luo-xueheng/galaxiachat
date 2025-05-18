@@ -32,6 +32,17 @@ const FriendInfo = () => {
     const [userInfo, setUserInfo] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(false);
 
+    //redirect
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("请先登录");
+            router.push("/login");
+            return;
+        }
+
+    }, []);
+
     useEffect(() => {
         const fetchUserInfo = async (username: string | null) => {
             if (!username) return;
@@ -120,7 +131,7 @@ const FriendInfo = () => {
             message.error("WebSocket 连接失败");
         };
     };
-    
+
 
     return (
         <div
@@ -163,9 +174,9 @@ const FriendInfo = () => {
                 <Divider />
 
                 <div style={{ textAlign: 'center' }}>
-                    <Space 
-                        direction="vertical" 
-                        size="middle" 
+                    <Space
+                        direction="vertical"
+                        size="middle"
                         style={{ width: '100%' }}
                     >
                         <Text>

@@ -52,6 +52,18 @@ export default function ChatPage() {
     const [myAvatar, setMyAvatar] = useState<string | undefined>(undefined);         // 我的头像
     const [friendAvatar, setFriendAvatar] = useState<string | undefined>(undefined); // 好友头像
     const [groupAvatars, setGroupAvatars] = useState<Record<string, string>>({});    // 群聊头像列表
+
+    //redirect
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("请先登录");
+            router.push("/login");
+            return;
+        }
+
+    }, []);
+
     useEffect(() => {
         const fetchAvatars = async () => {
             try {
@@ -75,7 +87,7 @@ export default function ChatPage() {
                         fetchUserAvatar(currentUser!),
                         fetchUserAvatar(friendUserName as string),
                     ]);
-                    
+
                     setMyAvatar(myAvatar);
                     setFriendAvatar(friendAvatar);
 
@@ -220,7 +232,7 @@ export default function ChatPage() {
                             isRead: msg.is_read,
                             readBy: msg.read_by,
                             replyCount: msg.reply_count ?? 0,
-                        }; 
+                        };
 
                         // 新消息插到前面
                         // setMessages(prev => [newMessage, ...prev]);

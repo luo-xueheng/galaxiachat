@@ -36,6 +36,16 @@ export default function ProfilePage() {
 
     const [token, setLocalToken] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
+    //redirect
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("请先登录");
+            router.push("/login");
+            return;
+        }
+
+    }, []);
     // 读取 localStorage 中的用户信息
     useEffect(() => {
         if (typeof window !== 'undefined') {

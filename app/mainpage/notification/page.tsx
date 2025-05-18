@@ -77,6 +77,18 @@ const Page = () => {
     const [groupToDelete, setGroupToDelete] = useState("");
 
     const [nickname, setNickname] = useState(null);
+
+    //redirect
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("请先登录");
+            router.push("/login");
+            return;
+        }
+
+    }, []);
+
     useEffect(() => {
         const storedToken = localStorage.getItem("token");
         const storedUserName = localStorage.getItem("userName");

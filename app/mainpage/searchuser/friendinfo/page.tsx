@@ -32,6 +32,17 @@ const FriendInfo = () => {
     const [userInfo, setUserInfo] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(false);
 
+    //redirect
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("请先登录");
+            router.push("/login");
+            return;
+        }
+
+    }, []);
+
     useEffect(() => {
         const fetchUserInfo = async (username: string | null) => {
             if (!username) return;

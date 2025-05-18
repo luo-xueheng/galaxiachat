@@ -82,6 +82,16 @@ export default function SearchListPage() {
       };
     });
   };
+  //redirect
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("请先登录");
+      router.push("/login");
+      return;
+    }
+
+  }, []);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -314,38 +324,38 @@ export default function SearchListPage() {
       {results.length === 0 ? (
         <Empty description="暂无搜索结果" />
       ) : (
-          <List
-            itemLayout="horizontal"
-            dataSource={results}
-            renderItem={(item) => (
-              <List.Item
-                key={item.userName}
-                actions={[
-                  <Space key="actions" size="middle">
-                    <Button
-                      type="primary"
-                      onClick={() => addFriend(item)}
-                      disabled={item.is_friend}
-                    >
-                      {item.is_friend ? "已添加" : "添加好友"}
-                    </Button>
-                  </Space>,
-                ]}
-                onClick={() => handleSearchItemClick(item.userName)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar src={item.avatar} style={{ marginRight: 12 }} />
-                  <div>
-                    <div style={{ fontSize: 16 }}>{item.userName}</div>
-                    <div style={{ fontSize: 12, color: '#888' }}>
-                      {item.is_friend ? "已是好友" : "未添加"}
-                    </div>
+        <List
+          itemLayout="horizontal"
+          dataSource={results}
+          renderItem={(item) => (
+            <List.Item
+              key={item.userName}
+              actions={[
+                <Space key="actions" size="middle">
+                  <Button
+                    type="primary"
+                    onClick={() => addFriend(item)}
+                    disabled={item.is_friend}
+                  >
+                    {item.is_friend ? "已添加" : "添加好友"}
+                  </Button>
+                </Space>,
+              ]}
+              onClick={() => handleSearchItemClick(item.userName)}
+              style={{ cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Avatar src={item.avatar} style={{ marginRight: 12 }} />
+                <div>
+                  <div style={{ fontSize: 16 }}>{item.userName}</div>
+                  <div style={{ fontSize: 12, color: '#888' }}>
+                    {item.is_friend ? "已是好友" : "未添加"}
                   </div>
                 </div>
-              </List.Item>
-            )}
-          />
+              </div>
+            </List.Item>
+          )}
+        />
 
       )}
     </Space>

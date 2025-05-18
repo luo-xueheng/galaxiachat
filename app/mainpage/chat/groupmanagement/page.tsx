@@ -34,6 +34,18 @@ type groupmember = {
 
 
 const ChatGroupManagement = () => {
+
+    //redirect
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("请先登录");
+            router.push("/login");
+            return;
+        }
+
+    }, []);
+
     const dispatch = useDispatch();
     const [friendOptions, setFriendOptions] = useState<{ label: string; value: string }[]>([]);
     const [groupMembers, setGroupMembers] = useState<any[]>([]);

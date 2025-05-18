@@ -1,7 +1,7 @@
 'use client';
 
 import {
-    Button, Flex, List, Avatar, Collapse, 
+    Button, Flex, List, Avatar, Collapse,
     Typography, message, Popconfirm, Dropdown, Menu,
     Select, Input, Space, Alert,
 } from "antd";
@@ -49,8 +49,19 @@ export default function FriendListPage() {
     const [newGroupName, setNewGroupName] = useState("");
     const [groupError, setGroupError] = useState<string | null>(null);
     const [groupToDelete, setGroupToDelete] = useState("");
-
     const [nickname, setNickname] = useState(null);
+
+    //redirect
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("请先登录");
+            router.push("/login");
+            return;
+        }
+
+    }, []);
+
     useEffect(() => {
         const fetchNickname = async () => {
             const userName = localStorage.getItem("userName");
