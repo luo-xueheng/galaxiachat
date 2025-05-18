@@ -35,7 +35,14 @@ const RegisterForm = () => {
                 alert(REGISTER_SUCCESS_PREFIX + userName);
                 router.push('/mainpage/chat');
             } else {
-                alert(REGISTER_FAILED);
+                // if (res.code === 3) {
+                //     alert("注册失败，用户名已存在！");
+                // }
+                if (res.info == 1062) {
+                    if (res.code.includes("instant_msg_user.email")) alert("注册失败!email已存在！");
+                    else if (res.code.includes("instant_msg_user.phone")) alert("注册失败!phone已存在！");
+                }
+                else alert(REGISTER_FAILED + "!" + res.info);
             }
         } catch (err) {
             alert(FAILURE_PREFIX + err);
