@@ -501,7 +501,7 @@ export default function ChatPage() {
             groupId: conversationId.toString(),
         }).toString();
 
-        router.push(`/chatgroupmanagement?${query}`);
+        router.push(`/mainpage/chat/groupmanagement?${query}`);
     };
 
     console.log("is group chat: ", isGroupChat);
